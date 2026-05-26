@@ -142,6 +142,8 @@ APP="<app>"
 IMAGE="<dockerhub-user>/<app>"
 TAG="${1:-latest}"
 
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
 echo "Building $IMAGE:$TAG"
 docker build -t "$IMAGE:$TAG" .
 
@@ -171,3 +173,5 @@ Remind the user:
 - Add a `/health` endpoint to the app if one does not exist (required by liveness/readiness probes)
 - Use `kubectl create secret` (not ConfigMap) for database passwords, API keys, and other secrets
 - Run `kubectl apply -f etc/k8s/<app>` to deploy; run `kubectl get pods` to verify pods are `Running`
+- `deployment.yaml` uses `:latest` as a placeholder — always deploy via `bin/k8s-deploy [tag]` to ensure the image tag is built and pushed before applying
+- Add `namespace: <app>` to each manifest's `metadata` if you use per-service namespaces

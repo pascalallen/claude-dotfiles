@@ -140,6 +140,7 @@ func deserializeEvent(recorded *esdb.RecordedEvent) (event.Event, error) {
 		}
 		return &e, nil
 	default:
+		// Unknown event type — add a case here when new domain events are introduced.
 		return nil, nil
 	}
 }
@@ -179,6 +180,10 @@ func (b *RabbitMqCommandBus) Execute(ctx context.Context, cmdType string, cmd an
 		return fmt.Errorf("opening channel: %w", err)
 	}
 	defer ch.Close()
+
+	if _, err := ch.QueueDeclare("commands", true, false, false, false, nil); err != nil {
+		return fmt.Errorf("declaring queue: %w", err)
+	}
 
 	data, err := json.Marshal(cmd)
 	if err != nil {
@@ -238,6 +243,12 @@ func (b *RabbitMqCommandBus) StartConsuming() error {
       EVENTSTORE_INSECURE: true
     ports:
       - "2113:2113"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:2113/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -256,8 +267,8 @@ func (b *RabbitMqCommandBus) StartConsuming() error {
 
 ### .env.example additions
 ```
-EVENTSTORE_HOST=eventstore
-EVENTSTORE_HTTP_PORT=2113
+EVENTSTORE_PORT=2113
+EVENTSTORE_CONNECTION_STRING=esdb://eventstore:2113?tls=false
 RABBITMQ_HOST=rabbitmq
 RABBITMQ_PORT=5672
 RABBITMQ_DEFAULT_USER=guest
@@ -305,6 +316,34 @@ The handler's `<Entity>Repository` field is replaced by an `EventStore` field. U
 wire.Bind(new(command_handler.<Entity>EventStore), new(*storage.EventStoreDb)),
 ```
 
+### Wire providers to add
+
+Add these provider functions (create or stub them in `infrastructure/storage/` and `infrastructure/messaging/`):
+
+```go
+// infrastructure/storage/eventstore_client.go
+func NewEventStoreDbClient(connStr string) (*esdb.Client, error) {
+	settings, err := esdb.ParseConnectionString(connStr)
+	if err != nil {
+		return nil, fmt.Errorf("parsing EventStoreDB connection string: %w", err)
+	}
+	return esdb.NewClient(settings)
+}
+
+// infrastructure/messaging/amqp_connection.go
+func NewAmqpConnection(url string) (*amqp.Connection, error) {
+	conn, err := amqp.Dial(url)
+	if err != nil {
+		return nil, fmt.Errorf("connecting to RabbitMQ: %w", err)
+	}
+	return conn, nil
+}
+```
+
+Add both to `wire.Build` in `cmd/<app>/wire.go`. The connection string and AMQP URL come from env vars — add a `Config` struct or read them directly via `os.Getenv`.
+
+Call `bus.StartConsuming()` in `main.go` after `initializeRouter()`, before `router.Run(":8080")`.
+
 ### Query handler — replay pattern
 
 Query handlers change from "find by id in Postgres" to "read stream and replay events":
@@ -328,6 +367,9 @@ Add this to `internal/<app>/domain/<entity>/<entity>.go`:
 
 ```go
 func LoadFromEvents(events []event.Event) (*<Entity>, error) {
+	if len(events) == 0 {
+		return nil, fmt.Errorf("<entity> not found")
+	}
 	e := &<Entity>{version: -1}
 	for _, ev := range events {
 		e.applyEvent(ev)
@@ -343,7 +385,7 @@ Note: `applyEvent` in the replay path mutates state and increments `version` —
 Add to `go.mod` requires:
 ```
 github.com/EventStore/EventStore-Client-Go/v4 v4.2.0
-github.com/rabbitmq/amqp091-go v1.10.0
+github.com/rabbitmq/amqp091-go v1.11.0
 ```
 
 Run inside the container: `bin/exec go mod tidy`

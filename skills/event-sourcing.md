@@ -33,8 +33,8 @@ Substitutions:
 
 ```
 internal/<app>/infrastructure/storage/event_store.go
-internal/<app>/application/projection/
-  <entity>_projection.js    (example EventStoreDB JS projection)
+etc/projections/
+  <entity>_projection.js    (EventStoreDB server-side projection — loaded via admin UI or HTTP API, not compiled with Go)
 ```
 
 ### Files modified
@@ -275,7 +275,10 @@ RABBITMQ_DEFAULT_USER=guest
 RABBITMQ_DEFAULT_PASS=guest
 ```
 
-### `internal/<app>/application/projection/<entity>_projection.js`
+### `etc/projections/<entity>_projection.js`
+
+> This is a server-side projection that runs inside EventStoreDB. Load it via the EventStoreDB admin UI at `http://localhost:2113` or via the HTTP API — it is NOT part of the Go binary.
+
 ```js
 fromAll()
   .when({

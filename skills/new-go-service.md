@@ -119,6 +119,7 @@ import (
 
 func initializeRouter() (*gin.Engine, func(), error) {
 	wire.Build(
+		storage.NewPool,
 		storage.NewPostgres<Entity>Repository,
 		wire.Bind(new(command_handler.<Entity>Repository), new(*storage.Postgres<Entity>Repository)),
 		wire.Bind(new(query_handler.Get<Entity>Repository), new(*storage.Postgres<Entity>Repository)),
@@ -142,6 +143,8 @@ func initializeRouter() (*gin.Engine, func(), error) {
 package main
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/pascalallen/<app>/internal/<app>/application/command_handler"
 	"github.com/pascalallen/<app>/internal/<app>/application/query_handler"
@@ -151,15 +154,18 @@ import (
 )
 
 func initializeRouter() (*gin.Engine, func(), error) {
+	pool, cleanup, err := storage.NewPool(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
 	commandBus := messaging.NewCommandBus()
 	queryBus := messaging.NewQueryBus()
-	postgres<Entity>Repository := storage.NewPostgres<Entity>Repository(nil)
+	postgres<Entity>Repository := storage.NewPostgres<Entity>Repository(pool)
 	register<Entity>Handler := command_handler.NewRegister<Entity>Handler(postgres<Entity>Repository)
 	commandBus.Register("command.Register<Entity>", register<Entity>Handler)
 	get<Entity>ByIdHandler := query_handler.NewGet<Entity>ByIdHandler(postgres<Entity>Repository)
 	queryBus.Register("query.Get<Entity>ById", get<Entity>ByIdHandler)
 	engine := apphttp.NewRouter(register<Entity>Handler, get<Entity>ByIdHandler)
-	cleanup := func() {}
 	return engine, cleanup, nil
 }
 ```
@@ -332,10 +338,27 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	<entity>domain "github.com/pascalallen/<app>/internal/<app>/domain/<entity>"
 )
+
+func NewPool(ctx context.Context) (*pgxpool.Pool, func(), error) {
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_DB"),
+	)
+	pool, err := pgxpool.New(ctx, connStr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating pgx pool: %w", err)
+	}
+	return pool, pool.Close, nil
+}
 
 type Postgres<Entity>Repository struct {
 	db *pgxpool.Pool

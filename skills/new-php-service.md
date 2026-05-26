@@ -58,6 +58,9 @@ config/
   services.yaml
 migrations/
   (empty placeholder)
+etc/
+  nginx/
+    default.conf
 public/
   index.php
 bin/
@@ -500,6 +503,26 @@ services:
 
 volumes:
   postgres_data:
+```
+
+### `etc/nginx/default.conf`
+```nginx
+server {
+    listen 80;
+    root /app/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass app:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+}
 ```
 
 ### `.env.example`

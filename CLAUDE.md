@@ -22,7 +22,7 @@ Dependency direction is strict: infrastructure imports application and domain; d
 - Database: PostgreSQL
 - DB access: `pgx` / raw SQL — no ORM in Go
 - Auth: JWT
-- Messaging (when needed): RabbitMQ
+- Messaging (when needed): native Go channels (ChannelCommandBus + ChannelEventDispatcher)
 - Event store (ES only): EventStoreDB
 - Containerization: Docker + Compose
 - Deployments: Kubernetes

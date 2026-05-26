@@ -1,11 +1,11 @@
 ---
 name: event-sourcing
-description: Augment an existing Go service (scaffolded with new-go-service) with event sourcing using EventStoreDB for persistence and RabbitMQ for async command dispatch
+description: Augment an existing Go service (scaffolded with new-go-service) with event sourcing using EventStoreDB for persistence; the channel command bus from the base scaffold handles async dispatch
 ---
 
 # Event Sourcing
 
-Add event sourcing to an existing Go service. This is an **additive layer** — it replaces the PostgreSQL repository and synchronous command bus with EventStoreDB persistence and RabbitMQ async dispatch. Reference: `pascalallen/es-go`.
+Add event sourcing to an existing Go service. This is an **additive layer** — it replaces the PostgreSQL repository with EventStoreDB persistence; the channel command bus from the base scaffold handles async dispatch. Reference: `pascalallen/es-go`.
 
 ## When to Use
 
@@ -40,11 +40,12 @@ etc/projections/
 ### Files modified
 
 ```
-internal/<app>/infrastructure/messaging/command_bus.go  — replaced with RabbitMQ async bus
-compose.yaml                                            — add EventStoreDB + RabbitMQ services
-.env.example                                            — add EventStoreDB + RabbitMQ vars
-CLAUDE.md                                               — add ES architecture notes
+compose.yaml  — add EventStoreDB service
+.env.example  — add EventStoreDB vars
+CLAUDE.md     — add ES architecture notes
 ```
+
+> The channel command bus from the base scaffold is the async dispatch mechanism. No changes to messaging are required when adding event sourcing.
 
 Command handlers and query handlers are also updated to use the ES pattern (see below).
 
@@ -146,92 +147,6 @@ func deserializeEvent(recorded *esdb.RecordedEvent) (event.Event, error) {
 }
 ```
 
-### `internal/<app>/infrastructure/messaging/command_bus.go` (replace existing)
-```go
-package messaging
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-
-	amqp "github.com/rabbitmq/amqp091-go"
-)
-
-type RabbitMqCommandBus struct {
-	conn     *amqp.Connection
-	handlers map[string]func([]byte) error
-}
-
-func NewRabbitMqCommandBus(conn *amqp.Connection) *RabbitMqCommandBus {
-	return &RabbitMqCommandBus{
-		conn:     conn,
-		handlers: make(map[string]func([]byte) error),
-	}
-}
-
-func (b *RabbitMqCommandBus) Register(cmdType string, handler func([]byte) error) {
-	b.handlers[cmdType] = handler
-}
-
-func (b *RabbitMqCommandBus) Execute(ctx context.Context, cmdType string, cmd any) error {
-	ch, err := b.conn.Channel()
-	if err != nil {
-		return fmt.Errorf("opening channel: %w", err)
-	}
-	defer ch.Close()
-
-	if _, err := ch.QueueDeclare("commands", true, false, false, false, nil); err != nil {
-		return fmt.Errorf("declaring queue: %w", err)
-	}
-
-	data, err := json.Marshal(cmd)
-	if err != nil {
-		return fmt.Errorf("marshaling command: %w", err)
-	}
-
-	return ch.PublishWithContext(ctx, "", "commands", false, false, amqp.Publishing{
-		ContentType: "application/json",
-		Type:        cmdType,
-		Body:        data,
-	})
-}
-
-func (b *RabbitMqCommandBus) StartConsuming() error {
-	ch, err := b.conn.Channel()
-	if err != nil {
-		return err
-	}
-
-	q, err := ch.QueueDeclare("commands", true, false, false, false, nil)
-	if err != nil {
-		return err
-	}
-
-	msgs, err := ch.Consume(q.Name, "", false, false, false, false, nil)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for msg := range msgs {
-			handler, ok := b.handlers[msg.Type]
-			if !ok {
-				msg.Nack(false, false)
-				continue
-			}
-			if err := handler(msg.Body); err != nil {
-				msg.Nack(false, true)
-				continue
-			}
-			msg.Ack(false)
-		}
-	}()
-
-	return nil
-}
-```
-
 ### compose.yaml additions (merge into existing file)
 ```yaml
   eventstore:
@@ -249,30 +164,12 @@ func (b *RabbitMqCommandBus) StartConsuming() error {
       timeout: 5s
       retries: 10
       start_period: 30s
-
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 ```
 
 ### .env.example additions
 ```
 EVENTSTORE_PORT=2113
 EVENTSTORE_CONNECTION_STRING=esdb://eventstore:2113?tls=false
-RABBITMQ_HOST=rabbitmq
-RABBITMQ_PORT=5672
-RABBITMQ_DEFAULT_USER=guest
-RABBITMQ_DEFAULT_PASS=guest
 ```
 
 ### `etc/projections/<entity>_projection.js`
@@ -332,20 +229,9 @@ func NewEventStoreDbClient(connStr string) (*esdb.Client, error) {
 	}
 	return esdb.NewClient(settings)
 }
-
-// infrastructure/messaging/amqp_connection.go
-func NewAmqpConnection(url string) (*amqp.Connection, error) {
-	conn, err := amqp.Dial(url)
-	if err != nil {
-		return nil, fmt.Errorf("connecting to RabbitMQ: %w", err)
-	}
-	return conn, nil
-}
 ```
 
-Add both to `wire.Build` in `cmd/<app>/wire.go`. The connection string and AMQP URL come from env vars — add a `Config` struct or read them directly via `os.Getenv`.
-
-Call `bus.StartConsuming()` in `main.go` after `initializeRouter()`, before `router.Run(":8080")`.
+Add `NewEventStoreDbClient` to `wire.Build` in `cmd/<app>/wire.go`. The connection string comes from an env var — add a `Config` struct or read it directly via `os.Getenv`.
 
 ### Query handler — replay pattern
 
@@ -388,7 +274,6 @@ Note: `applyEvent` in the replay path mutates state and increments `version` —
 Add to `go.mod` requires:
 ```
 github.com/EventStore/EventStore-Client-Go/v4 v4.2.0
-github.com/rabbitmq/amqp091-go v1.11.0
 ```
 
 Run inside the container: `bin/exec go mod tidy`

@@ -14,6 +14,10 @@ Ask the user:
 2. **API base URL** (e.g. `http://localhost:8080/api/v1`) — used in the Axios client config
 3. **Styling approach**: CSS Modules (default) or Tailwind
 
+Substitute `<app>` with the app name and `<api-base-url>` with the API base URL throughout all templates before writing files.
+
+Note: When substituting `<app>` inside JSX (e.g. `<h1>`), write the app name as a plain string — not as an HTML/JSX tag.
+
 ## Directory Structure to Generate
 
 ```
@@ -38,6 +42,8 @@ vite.config.ts
 tsconfig.json
 tsconfig.node.json
 package.json
+postcss.config.js  (Tailwind only)
+tailwind.config.js  (Tailwind only)
 .eslintrc.cjs
 .prettierrc
 .gitignore
@@ -87,6 +93,30 @@ If Tailwind was chosen, also add to devDependencies:
 "tailwindcss": "^3.4.0",
 "postcss": "^8.4.0",
 "autoprefixer": "^10.4.0"
+```
+
+### Tailwind config files (Tailwind variant only)
+
+**`postcss.config.js`:**
+```js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+**`tailwind.config.js`:**
+```js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
 ```
 
 ### `vite.config.ts`
@@ -276,7 +306,7 @@ export default App
 ```tsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
+import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -399,6 +429,8 @@ src/
 node_modules/
 dist/
 .env
+.env.local
+.env.*.local
 ```
 
 ### `.github/workflows/npm.yml`

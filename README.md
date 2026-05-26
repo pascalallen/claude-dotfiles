@@ -2,6 +2,10 @@
 
 Global Claude Code configuration for Pascal Allen — installs architecture context and scaffold skills into `~/.claude/`.
 
+## Who This Is For
+
+These dotfiles are for Pascal Allen — senior software engineer at Crimson Drive Design LLC in Austin, TX. Go is the primary language; PHP (Symfony) is the secondary. Every project, regardless of stack, is built on DDD, hexagonal architecture, and CQRS. This repo encodes those decisions so Claude applies them consistently across all sessions without re-explanation.
+
 ## Philosophy
 
 Every project I build follows the same architectural foundation: **Domain-Driven Design**, **hexagonal architecture**, **CQRS**, and **SOLID principles**. The stack varies (Go or PHP on the backend, React + TypeScript on the frontend), but the structural decisions don't. This repo encodes those decisions so Claude applies them consistently without being re-explained in every session.

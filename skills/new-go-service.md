@@ -29,6 +29,8 @@ internal/<app>/
   domain/
     event/
       <entity>.go
+    logger/
+      logger.go
     <entity>/
       <entity>.go
   application/
@@ -43,11 +45,16 @@ internal/<app>/
   infrastructure/
     http/
       router.go
-    storage/
-      postgres_<entity>_repository.go
+    logger/
+      slog/
+        slog_logger.go
     messaging/
       command_bus.go
+      event_dispatcher.go
+      messaging_test.go
       query_bus.go
+    storage/
+      postgres_<entity>_repository.go
 Dockerfile
 compose.yaml
 .env.example
@@ -85,19 +92,43 @@ require (
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/pascalallen/<app>/internal/<app>/application/command"
+	"github.com/pascalallen/<app>/internal/<app>/application/query"
 )
 
 func main() {
-	router, cleanup, err := initializeRouter()
+	ctx := context.Background()
+	router, commandBus, queryBus, eventDispatcher, register<Entity>Handler, get<Entity>ByIdHandler, cleanup, err := initializeRouter(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer cleanup()
 
-	if err := router.Run(":8080"); err != nil {
-		log.Fatal(err)
-	}
+	commandBus.RegisterHandler(command.Register<Entity>{}.CommandName(), register<Entity>Handler)
+	queryBus.RegisterHandler(query.Get<Entity>ById{}.QueryName(), get<Entity>ByIdHandler)
+
+	go commandBus.StartConsuming()
+	go eventDispatcher.StartConsuming()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := router.Run(":8080"); err != nil {
+			log.Printf("router stopped: %v", err)
+		}
+	}()
+
+	<-quit
+	log.Println("shutting down...")
+	commandBus.Shutdown()
+	eventDispatcher.Shutdown()
 }
 ```
 
@@ -108,28 +139,44 @@ func main() {
 package main
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"github.com/pascalallen/<app>/internal/<app>/application/command_handler"
 	"github.com/pascalallen/<app>/internal/<app>/application/query_handler"
+	"github.com/pascalallen/<app>/internal/<app>/domain/logger"
 	apphttp "github.com/pascalallen/<app>/internal/<app>/infrastructure/http"
+	sloglogger "github.com/pascalallen/<app>/internal/<app>/infrastructure/logger/slog"
 	"github.com/pascalallen/<app>/internal/<app>/infrastructure/messaging"
 	"github.com/pascalallen/<app>/internal/<app>/infrastructure/storage"
 )
 
-func initializeRouter() (*gin.Engine, func(), error) {
+func initializeRouter(ctx context.Context) (
+	*gin.Engine,
+	*messaging.ChannelCommandBus,
+	*messaging.SynchronousQueryBus,
+	*messaging.ChannelEventDispatcher,
+	*command_handler.Register<Entity>Handler,
+	*query_handler.Get<Entity>ByIdHandler,
+	func(),
+	error,
+) {
 	wire.Build(
 		storage.NewPool,
 		storage.NewPostgres<Entity>Repository,
 		wire.Bind(new(command_handler.<Entity>Repository), new(*storage.Postgres<Entity>Repository)),
 		wire.Bind(new(query_handler.Get<Entity>Repository), new(*storage.Postgres<Entity>Repository)),
-		messaging.NewCommandBus,
-		messaging.NewQueryBus,
+		sloglogger.NewSlogLogger,
+		wire.Bind(new(logger.Logger), new(*sloglogger.SlogLogger)),
+		messaging.NewChannelCommandBus,
+		messaging.NewSynchronousQueryBus,
+		messaging.NewChannelEventDispatcher,
 		command_handler.NewRegister<Entity>Handler,
 		query_handler.NewGet<Entity>ByIdHandler,
 		apphttp.NewRouter,
 	)
-	return nil, nil, nil
+	return nil, nil, nil, nil, nil, nil, nil, nil
 }
 ```
 
@@ -149,10 +196,26 @@ func initializeRouter() (*gin.Engine, func(), error) {
 
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"context"
 
-func initializeRouter() (*gin.Engine, func(), error) {
-	return nil, nil, nil
+	"github.com/gin-gonic/gin"
+	"github.com/pascalallen/<app>/internal/<app>/application/command_handler"
+	"github.com/pascalallen/<app>/internal/<app>/application/query_handler"
+	"github.com/pascalallen/<app>/internal/<app>/infrastructure/messaging"
+)
+
+func initializeRouter(ctx context.Context) (
+	*gin.Engine,
+	*messaging.ChannelCommandBus,
+	*messaging.SynchronousQueryBus,
+	*messaging.ChannelEventDispatcher,
+	*command_handler.Register<Entity>Handler,
+	*query_handler.Get<Entity>ByIdHandler,
+	func(),
+	error,
+) {
+	return nil, nil, nil, nil, nil, nil, nil, nil
 }
 ```
 
@@ -173,6 +236,22 @@ type <Entity>Registered struct {
 
 func (e *<Entity>Registered) EventName() string {
 	return "<Entity>Registered"
+}
+```
+
+### `internal/<app>/domain/logger/logger.go`
+```go
+package logger
+
+import "context"
+
+type Logger interface {
+	Debug(msg string, keyVals ...any)
+	Info(msg string, keyVals ...any)
+	Warn(msg string, keyVals ...any)
+	Error(msg string, keyVals ...any)
+	With(keyVals ...any) Logger
+	WithContext(ctx context.Context) Logger
 }
 ```
 
@@ -229,6 +308,40 @@ func (e *<Entity>) applyEvent(ev event.Event) {
 }
 ```
 
+### `internal/<app>/infrastructure/logger/slog/slog_logger.go`
+```go
+package sloglogger
+
+import (
+	"context"
+	"log/slog"
+	"os"
+
+	"github.com/pascalallen/<app>/internal/<app>/domain/logger"
+)
+
+type SlogLogger struct {
+	l *slog.Logger
+}
+
+func NewSlogLogger() *SlogLogger {
+	return &SlogLogger{l: slog.New(slog.NewJSONHandler(os.Stdout, nil))}
+}
+
+func (s *SlogLogger) Debug(msg string, keyVals ...any) { s.l.Debug(msg, keyVals...) }
+func (s *SlogLogger) Info(msg string, keyVals ...any)  { s.l.Info(msg, keyVals...) }
+func (s *SlogLogger) Warn(msg string, keyVals ...any)  { s.l.Warn(msg, keyVals...) }
+func (s *SlogLogger) Error(msg string, keyVals ...any) { s.l.Error(msg, keyVals...) }
+
+func (s *SlogLogger) With(keyVals ...any) logger.Logger {
+	return &SlogLogger{l: s.l.With(keyVals...)}
+}
+
+func (s *SlogLogger) WithContext(_ context.Context) logger.Logger {
+	return s
+}
+```
+
 ### `internal/<app>/application/command/register_<entity>.go`
 ```go
 package command
@@ -236,6 +349,8 @@ package command
 type Register<Entity> struct {
 	Id string
 }
+
+func (c Register<Entity>) CommandName() string { return "Register<Entity>" }
 ```
 
 ### `internal/<app>/application/command_handler/register_<entity>_handler.go`
@@ -248,6 +363,7 @@ import (
 
 	"github.com/pascalallen/<app>/internal/<app>/application/command"
 	<entity>domain "github.com/pascalallen/<app>/internal/<app>/domain/<entity>"
+	"github.com/pascalallen/<app>/internal/<app>/infrastructure/messaging"
 )
 
 type <Entity>Repository interface {
@@ -263,12 +379,16 @@ func NewRegister<Entity>Handler(repo <Entity>Repository) *Register<Entity>Handle
 	return &Register<Entity>Handler{repo: repo}
 }
 
-func (h *Register<Entity>Handler) Handle(ctx context.Context, cmd command.Register<Entity>) error {
-	e, err := <entity>domain.Register(cmd.Id)
+func (h *Register<Entity>Handler) Handle(cmd messaging.Command) error {
+	c, ok := cmd.(*command.Register<Entity>)
+	if !ok {
+		return fmt.Errorf("unexpected command type: %T", cmd)
+	}
+	e, err := <entity>domain.Register(c.Id)
 	if err != nil {
 		return fmt.Errorf("registering <entity>: %w", err)
 	}
-	if err := h.repo.Save(ctx, e); err != nil {
+	if err := h.repo.Save(context.Background(), e); err != nil {
 		return fmt.Errorf("saving <entity>: %w", err)
 	}
 	e.ClearUncommittedEvents()
@@ -283,6 +403,8 @@ package query
 type Get<Entity>ById struct {
 	Id string
 }
+
+func (q Get<Entity>ById) QueryName() string { return "Get<Entity>ById" }
 ```
 
 ### `internal/<app>/application/query_handler/get_<entity>_by_id_handler.go`
@@ -295,6 +417,7 @@ import (
 
 	"github.com/pascalallen/<app>/internal/<app>/application/query"
 	<entity>domain "github.com/pascalallen/<app>/internal/<app>/domain/<entity>"
+	"github.com/pascalallen/<app>/internal/<app>/infrastructure/messaging"
 )
 
 type Get<Entity>Repository interface {
@@ -309,10 +432,14 @@ func NewGet<Entity>ByIdHandler(repo Get<Entity>Repository) *Get<Entity>ByIdHandl
 	return &Get<Entity>ByIdHandler{repo: repo}
 }
 
-func (h *Get<Entity>ByIdHandler) Handle(ctx context.Context, q query.Get<Entity>ById) (*<entity>domain.<Entity>, error) {
-	e, err := h.repo.FindById(ctx, q.Id)
+func (h *Get<Entity>ByIdHandler) Handle(q messaging.Query) (any, error) {
+	qry, ok := q.(query.Get<Entity>ById)
+	if !ok {
+		return nil, fmt.Errorf("unexpected query type: %T", q)
+	}
+	e, err := h.repo.FindById(context.Background(), qry.Id)
 	if err != nil {
-		return nil, fmt.Errorf("fetching <entity> by id %s: %w", q.Id, err)
+		return nil, fmt.Errorf("fetching <entity> by id %s: %w", qry.Id, err)
 	}
 	return e, nil
 }
@@ -389,33 +516,80 @@ func (r *Postgres<Entity>Repository) FindById(ctx context.Context, id string) (*
 package messaging
 
 import (
-	"context"
-	"fmt"
+	"sync"
+
+	"github.com/pascalallen/<app>/internal/<app>/domain/logger"
 )
 
+type Command interface {
+	CommandName() string
+}
+
 type CommandHandler interface {
-	Handle(ctx context.Context, cmd any) error
+	Handle(cmd Command) error
 }
 
-type CommandBus struct {
+const channelBufferSize = 256
+
+type ChannelCommandBus struct {
+	ch       chan Command
 	handlers map[string]CommandHandler
+	logger   logger.Logger
+	once     sync.Once
+	wg       sync.WaitGroup
 }
 
-func NewCommandBus() *CommandBus {
-	return &CommandBus{handlers: make(map[string]CommandHandler)}
-}
-
-func (b *CommandBus) Register(cmdType string, handler CommandHandler) {
-	b.handlers[cmdType] = handler
-}
-
-func (b *CommandBus) Execute(ctx context.Context, cmd any) error {
-	cmdType := fmt.Sprintf("%T", cmd)
-	handler, ok := b.handlers[cmdType]
-	if !ok {
-		return fmt.Errorf("no handler registered for %s", cmdType)
+func NewChannelCommandBus(log logger.Logger) *ChannelCommandBus {
+	return &ChannelCommandBus{
+		ch:       make(chan Command, channelBufferSize),
+		handlers: make(map[string]CommandHandler),
+		logger:   log,
 	}
-	return handler.Handle(ctx, cmd)
+}
+
+func (b *ChannelCommandBus) RegisterHandler(commandType string, handler CommandHandler) {
+	b.logger.Info("registering command handler", "commandType", commandType)
+	b.handlers[commandType] = handler
+}
+
+func (b *ChannelCommandBus) Execute(cmd Command) error {
+	b.logger.Info("executing command", "commandName", cmd.CommandName())
+	b.ch <- cmd
+	return nil
+}
+
+func (b *ChannelCommandBus) StartConsuming() {
+	b.logger.Info("starting command bus consumption")
+	b.wg.Add(1)
+	defer b.wg.Done()
+	for cmd := range b.ch {
+		b.processCommand(cmd)
+	}
+}
+
+func (b *ChannelCommandBus) Shutdown() {
+	b.once.Do(func() { close(b.ch) })
+	b.wg.Wait()
+}
+
+func (b *ChannelCommandBus) processCommand(cmd Command) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.logger.Error("panic in command handler", "panic", r, "commandType", cmd.CommandName())
+		}
+	}()
+
+	b.logger.Info("processing command", "commandType", cmd.CommandName())
+
+	handler, found := b.handlers[cmd.CommandName()]
+	if !found {
+		b.logger.Warn("no handler registered", "commandType", cmd.CommandName())
+		return
+	}
+
+	if err := handler.Handle(cmd); err != nil {
+		b.logger.Error("command handler error", "error", err, "commandType", cmd.CommandName())
+	}
 }
 ```
 
@@ -424,33 +598,217 @@ func (b *CommandBus) Execute(ctx context.Context, cmd any) error {
 package messaging
 
 import (
-	"context"
 	"fmt"
+
+	"github.com/pascalallen/<app>/internal/<app>/domain/logger"
 )
 
+type Query interface {
+	QueryName() string
+}
+
 type QueryHandler interface {
-	Handle(ctx context.Context, q any) (any, error)
+	Handle(query Query) (any, error)
 }
 
-type QueryBus struct {
+type SynchronousQueryBus struct {
 	handlers map[string]QueryHandler
+	logger   logger.Logger
 }
 
-func NewQueryBus() *QueryBus {
-	return &QueryBus{handlers: make(map[string]QueryHandler)}
+func NewSynchronousQueryBus(log logger.Logger) *SynchronousQueryBus {
+	return &SynchronousQueryBus{
+		handlers: make(map[string]QueryHandler),
+		logger:   log,
+	}
 }
 
-func (b *QueryBus) Register(queryType string, handler QueryHandler) {
+func (b *SynchronousQueryBus) RegisterHandler(queryType string, handler QueryHandler) {
+	b.logger.Info("registering query handler", "queryType", queryType)
 	b.handlers[queryType] = handler
 }
 
-func (b *QueryBus) Fetch(ctx context.Context, q any) (any, error) {
-	queryType := fmt.Sprintf("%T", q)
-	handler, ok := b.handlers[queryType]
-	if !ok {
-		return nil, fmt.Errorf("no handler registered for %s", queryType)
+func (b *SynchronousQueryBus) Fetch(query Query) (any, error) {
+	b.logger.Info("fetching query", "queryName", query.QueryName())
+	handler, found := b.handlers[query.QueryName()]
+	if !found {
+		return nil, fmt.Errorf("no handler registered for query type: %s", query.QueryName())
 	}
-	return handler.Handle(ctx, q)
+	results, err := handler.Handle(query)
+	if err != nil {
+		b.logger.Error("query handler error", "error", err, "queryType", query.QueryName())
+		return nil, fmt.Errorf("query handler error: %w", err)
+	}
+	return results, nil
+}
+```
+
+### `internal/<app>/infrastructure/messaging/event_dispatcher.go`
+```go
+package messaging
+
+import (
+	"sync"
+
+	"github.com/pascalallen/<app>/internal/<app>/domain/logger"
+)
+
+// Event is the dispatch interface used for cross-aggregate fan-out.
+// It is distinct from domain/event types which carry aggregate state changes.
+type Event interface {
+	EventName() string
+}
+
+type Listener interface {
+	Handle(event Event) error
+}
+
+type ChannelEventDispatcher struct {
+	ch        chan Event
+	listeners map[string]Listener
+	logger    logger.Logger
+	once      sync.Once
+	wg        sync.WaitGroup
+}
+
+func NewChannelEventDispatcher(log logger.Logger) *ChannelEventDispatcher {
+	return &ChannelEventDispatcher{
+		ch:        make(chan Event, channelBufferSize),
+		listeners: make(map[string]Listener),
+		logger:    log,
+	}
+}
+
+func (e *ChannelEventDispatcher) RegisterListener(eventType string, listener Listener) {
+	e.logger.Info("registering event listener", "eventType", eventType)
+	e.listeners[eventType] = listener
+}
+
+func (e *ChannelEventDispatcher) Dispatch(evt Event) {
+	e.logger.Info("dispatching event", "eventName", evt.EventName())
+	e.ch <- evt
+}
+
+func (e *ChannelEventDispatcher) StartConsuming() {
+	e.logger.Info("starting event dispatcher consumption")
+	e.wg.Add(1)
+	defer e.wg.Done()
+	for evt := range e.ch {
+		e.processEvent(evt)
+	}
+}
+
+func (e *ChannelEventDispatcher) Shutdown() {
+	e.once.Do(func() { close(e.ch) })
+	e.wg.Wait()
+}
+
+func (e *ChannelEventDispatcher) processEvent(evt Event) {
+	defer func() {
+		if r := recover(); r != nil {
+			e.logger.Error("panic in event listener", "panic", r, "eventType", evt.EventName())
+		}
+	}()
+
+	e.logger.Info("processing event", "eventType", evt.EventName())
+
+	listener, found := e.listeners[evt.EventName()]
+	if !found {
+		e.logger.Warn("no listener registered", "eventType", evt.EventName())
+		return
+	}
+
+	if err := listener.Handle(evt); err != nil {
+		e.logger.Error("event listener error", "error", err, "eventType", evt.EventName())
+	}
+}
+```
+
+### `internal/<app>/infrastructure/messaging/messaging_test.go`
+```go
+package messaging
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/pascalallen/<app>/internal/<app>/domain/logger"
+)
+
+type mockLogger struct{}
+
+func (m *mockLogger) Debug(msg string, keyVals ...any)            {}
+func (m *mockLogger) Info(msg string, keyVals ...any)             {}
+func (m *mockLogger) Warn(msg string, keyVals ...any)             {}
+func (m *mockLogger) Error(msg string, keyVals ...any)            {}
+func (m *mockLogger) With(keyVals ...any) logger.Logger           { return m }
+func (m *mockLogger) WithContext(_ context.Context) logger.Logger { return m }
+
+type testCmd struct{ name string }
+
+func (c *testCmd) CommandName() string { return c.name }
+
+type testEvent struct{ name string }
+
+func (e *testEvent) EventName() string { return e.name }
+
+type mockHandler struct{ fn func(cmd Command) error }
+
+func (m *mockHandler) Handle(cmd Command) error { return m.fn(cmd) }
+
+type mockListener struct{ fn func(evt Event) error }
+
+func (m *mockListener) Handle(evt Event) error { return m.fn(evt) }
+
+func TestChannelCommandBus(t *testing.T) {
+	bus := NewChannelCommandBus(&mockLogger{})
+
+	done := make(chan bool, 1)
+	bus.RegisterHandler("test.cmd", &mockHandler{fn: func(cmd Command) error {
+		if cmd.CommandName() == "test.cmd" {
+			done <- true
+		}
+		return nil
+	}})
+
+	go bus.StartConsuming()
+
+	if err := bus.Execute(&testCmd{name: "test.cmd"}); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for command handler")
+	}
+
+	bus.Shutdown()
+}
+
+func TestChannelEventDispatcher(t *testing.T) {
+	dispatcher := NewChannelEventDispatcher(&mockLogger{})
+
+	done := make(chan bool, 1)
+	dispatcher.RegisterListener("test.event", &mockListener{fn: func(evt Event) error {
+		if evt.EventName() == "test.event" {
+			done <- true
+		}
+		return nil
+	}})
+
+	go dispatcher.StartConsuming()
+
+	dispatcher.Dispatch(&testEvent{name: "test.event"})
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for event listener")
+	}
+
+	dispatcher.Shutdown()
 }
 ```
 
@@ -462,23 +820,35 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/pascalallen/<app>/internal/<app>/application/command_handler"
-	"github.com/pascalallen/<app>/internal/<app>/application/query_handler"
+	"github.com/oklog/ulid/v2"
+	"github.com/pascalallen/<app>/internal/<app>/application/command"
+	"github.com/pascalallen/<app>/internal/<app>/application/query"
+	"github.com/pascalallen/<app>/internal/<app>/infrastructure/messaging"
 )
 
 func NewRouter(
-	register<Entity>Handler *command_handler.Register<Entity>Handler,
-	get<Entity>ByIdHandler *query_handler.Get<Entity>ByIdHandler,
+	commandBus *messaging.ChannelCommandBus,
+	queryBus *messaging.SynchronousQueryBus,
 ) *gin.Engine {
 	r := gin.Default()
 
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/<entity>s", func(c *gin.Context) {
-			c.JSON(http.StatusCreated, gin.H{"message": "created"})
+			id := ulid.Make().String()
+			if err := commandBus.Execute(&command.Register<Entity>{Id: id}); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusAccepted, gin.H{"id": id})
 		})
 		v1.GET("/<entity>s/:id", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"id": c.Param("id")})
+			result, err := queryBus.Fetch(query.Get<Entity>ById{Id: c.Param("id")})
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, result)
 		})
 	}
 
@@ -598,7 +968,7 @@ internal/<app>/
   infrastructure/
     http/              — Gin router + handlers
     storage/           — PostgreSQL repository implementations
-    messaging/         — command + query buses
+    messaging/         — ChannelCommandBus (async), SynchronousQueryBus, ChannelEventDispatcher
 ```
 
 ## Key Patterns
@@ -609,6 +979,10 @@ internal/<app>/
 - Query handlers: `FindById` → return aggregate
 - All dev commands run inside Docker via `bin/exec`
 - `wire_gen.go` is generated — run `wire` in `cmd/<app>/` to regenerate after changing providers
+- Command bus: fire-and-forget async — `Execute(cmd)` sends to buffered channel; HTTP handlers return 202 Accepted
+- Query bus: synchronous — `Fetch(q)` blocks until the handler returns
+- `StartConsuming()` runs in a goroutine; `Shutdown()` drains the channel before exit
+- Handler registration (`RegisterHandler`, `RegisterListener`) happens in `main.go` before `StartConsuming()`
 ```
 
 ### `.gitignore`

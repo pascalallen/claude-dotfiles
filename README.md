@@ -23,23 +23,25 @@ Event sourcing is a deliberate non-default. I reach for it only when the domain 
 | DI Container | Always — Google Wire (Go) or Symfony DI (PHP) |
 | Event Sourcing | Only when state history has explicit business value |
 | Containerization | Always — everything runs in Docker, dev commands via `bin/exec` |
-| Kubernetes | Deployments — `k8s-deploy` skill scaffolds manifests |
+| DigitalOcean App Platform | Default deploy target — builds the Dockerfile from GitHub, managed Postgres |
+| Kubernetes | Optional — `k8s-deploy` skill scaffolds manifests when a cluster is the target |
 
 ## Stack
 
-**Backend (Go):** Go · Google Wire · Gin · PostgreSQL · pgx · JWT · RabbitMQ (messaging) · EventStoreDB (ES only)
+**Backend (Go):** Go · Google Wire · Gin · PostgreSQL · `database/sql` + `lib/pq` (no ORM) · golang-migrate · JWT · native Go channels (messaging) · EventStoreDB + RabbitMQ (ES only)
 
 **Backend (PHP):** PHP 8+ · Symfony (bare skeleton) · Doctrine ORM · PostgreSQL · JWT
 
 **Frontend:** React · TypeScript (strict) · Vite · Axios · CSS Modules or Tailwind · NGINX
 
-**Infrastructure:** Docker · Docker Compose · Kubernetes
+**Infrastructure:** Docker · Docker Compose · DigitalOcean App Platform (default) · Kubernetes (optional)
 
 ## Skills
 
 | Skill | Trigger | Scaffolds |
 |-------|---------|-----------|
-| `new-go-service` | `/new-go-service` | Go microservice: DDD + hexagonal + CQRS + Wire + Gin + PostgreSQL + Docker |
+| `new-go-service` | `/new-go-service` | Go microservice by cloning + renaming the `go-clean-arch` template: DDD + hexagonal + CQRS + Wire + Gin + `database/sql`/`lib/pq` + migrations + Docker |
+| `add-cqrs-feature` | `/add-cqrs-feature` | Add a command/query/event+listener and optional HTTP route to an existing Go service, following the grouped-by-domain conventions |
 | `new-php-service` | `/new-php-service` | PHP service: Symfony skeleton + DDD + hexagonal + CQRS + Doctrine + Docker |
 | `new-react-app` | `/new-react-app` | React + TypeScript: Vite + Axios + ESLint/Prettier + Docker/NGINX |
 | `k8s-deploy` | `/k8s-deploy` | Kubernetes manifests (Deployment, Service, ConfigMap, HPA) + deploy script |
@@ -67,4 +69,4 @@ Restart Claude Code after installing. To uninstall:
 
 ## Future Extensions
 
-Feature-level skills (add aggregate, add command/query handler pair) are the natural next additions. The scaffold skills lay the foundation; feature skills will extend it surgically.
+The first feature-level skill (`add-cqrs-feature`) now extends a scaffolded service surgically. Natural next additions: a DigitalOcean App Platform deploy skill (superseding/​complementing `k8s-deploy`), and aligning `new-react-app` with the Webpack + TanStack Query + Bootstrap frontend stack used in production.

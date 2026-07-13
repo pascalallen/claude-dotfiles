@@ -20,12 +20,12 @@ Dependency direction is strict: infrastructure imports application and domain; d
 - DI: Google Wire (`wire.go` injector + generated `wire_gen.go`)
 - HTTP: Gin
 - Database: PostgreSQL
-- DB access: `pgx` / raw SQL — no ORM in Go
+- DB access: `database/sql` + `lib/pq` / raw SQL — no ORM in Go
 - Auth: JWT
 - Messaging (when needed): native Go channels (ChannelCommandBus + ChannelEventDispatcher)
 - Event store (ES only): EventStoreDB
 - Containerization: Docker + Compose
-- Deployments: Kubernetes
+- Deployments: DigitalOcean App Platform (default; builds the Dockerfile from GitHub with managed Postgres) — Kubernetes optional
 - All dev commands run inside Docker via `bin/exec`
 - Scripts always present: `bin/up`, `bin/down`, `bin/exec`
 
@@ -69,7 +69,7 @@ When in doubt, use standard CQRS with PostgreSQL. The `event-sourcing` skill add
 - Optimistic concurrency via aggregate version (Go ES)
 - Domain events carry `OccurredAt time.Time` (Go) / `\DateTimeImmutable $occurredAt` (PHP) set at raise-time
 - Migrations: `database/` (Go) or `migrations/` (PHP)
-- No ORM in Go — raw SQL via pgx
+- No ORM in Go — raw SQL via `database/sql` + `lib/pq`
 - `wire_gen.go` is generated — never edit by hand; run `wire` in the `cmd/<app>` directory to regenerate
 
 ## Canonical Reference Repos

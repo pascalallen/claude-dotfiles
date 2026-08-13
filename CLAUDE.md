@@ -2,82 +2,72 @@
 
 ## Who I Am
 
-Senior software engineer and computer scientist at Crimson Drive Design LLC, Austin TX. Primary language is Go; PHP is my origin language. I write about Go architecture, distributed systems, and infrastructure on Medium. Calibrate all explanations to expert level — skip basics, no padding.
+Senior software engineer and computer scientist; founder of Crimson Drive Design LLC, Austin TX. Primary language is Go; PHP is my origin language. I build MCP servers in Go, author Claude Code skills, and write about Go architecture and distributed systems on Medium. Calibrate all explanations to expert level — skip basics, no padding.
 
 ## Default Architecture
 
 Every project uses DDD + hexagonal architecture + CQRS unless I say otherwise.
 
-- **Domain layer** — pure business logic, zero framework or infrastructure imports. Contains: entities, aggregate roots, value objects, domain events, repository interfaces.
-- **Application layer** — use case orchestration. Contains: command structs, command handlers, query structs, query handlers, event listeners.
+- **Domain layer** — pure business logic, zero framework or infrastructure imports. Contains: entities, value objects, repository interfaces.
+- **Application layer** — use case orchestration. Contains: command structs, command handlers, query structs, query handlers, events, event listeners.
 - **Infrastructure layer** — all external integrations: HTTP, persistence, messaging, DI wiring.
 
 Dependency direction is strict: infrastructure imports application and domain; domain imports nothing outside itself.
 
 ## Default Go Stack
 
-- Language: Go
-- DI: Google Wire (`wire.go` injector + generated `wire_gen.go`)
-- HTTP: Gin
-- Database: PostgreSQL
-- DB access: `database/sql` + `lib/pq` / raw SQL — no ORM in Go
-- Auth: JWT
-- Messaging (when needed): native Go channels (ChannelCommandBus + ChannelEventDispatcher)
-- Event store (ES only): EventStoreDB
-- Containerization: Docker + Compose
-- Deployments: DigitalOcean App Platform (default; builds the Dockerfile from GitHub with managed Postgres) — Kubernetes optional
-- All dev commands run inside Docker via `bin/exec`
-- Scripts always present: `bin/up`, `bin/down`, `bin/exec`
+- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go tool wire` in `infrastructure/container/`)
+- HTTP: Gin, JSend responders, closure actions
+- Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
+- Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
+- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; async only via the `pascalallen/pubsub` library when true background work exists — consequence: single-instance deploys
+- Auth: JWT · Event store (ES only): EventStoreDB
+- Docker + Compose; dev commands run inside Docker via `bin/exec`; `bin/up`, `bin/down`, `bin/exec` always present; **no Makefiles**
 
 ## Default PHP Stack
 
-- Language: PHP 8+
-- Framework: Symfony (bare skeleton — I impose my own structure on top)
-- DI: Symfony DI container via `config/services.yaml`
-- HTTP: Symfony controllers (thin — delegate to command bus)
-- Database: PostgreSQL
-- ORM: Doctrine
-- Auth: JWT (LexikJWTAuthenticationBundle or equivalent)
-- Containerization: Docker + Compose
-- Deployments: Kubernetes
-- All dev commands run inside Docker via `bin/exec`
-- Scripts always present: `bin/up`, `bin/down`, `bin/exec`, `bin/composer`, `bin/phpunit`
+- PHP 8.2+, Symfony bare skeleton — I impose the same src/{Domain,Application,Infrastructure} structure on top
+- DI: Symfony container via `config/services.yaml` (Domain interfaces bound to Infrastructure implementations)
+- Thin controllers delegating to invokable handlers; Doctrine (XML mappings — domain stays framework-free); PostgreSQL; JWT (Lexik)
+- Migrations: `migrations/`; Docker + `bin/up`, `bin/down`, `bin/exec`, `bin/composer`, `bin/phpunit`
 
 ## Default Frontend Stack
 
-- Framework: React
-- Language: TypeScript (strict mode)
-- Build: Vite
-- HTTP client: Axios
-- Styling: CSS Modules (default) or Tailwind (if requested)
-- Served in production via NGINX in Docker
+- React 19 + TypeScript (strict) + Webpack 5 + Yarn — not Vite
+- TanStack Query for server state; axios behind a single ApiService; React Router v7
+- Bootstrap 5 + react-bootstrap + `@pascalallen/react-form-components`; SCSS
+- ESLint 9 flat config + Prettier (120 cols, single quotes); `@`-prefixed TS path aliases
+- Custom observable stores for auth/client state — no Redux
+- Default shape: lives in `web/app/` of the Go service, Webpack emits to `web/static/`, Go serves the template with runtime config injected as base64 JSON
 
-## Event Sourcing — When to Reach For It
+## Event Sourcing — Not a Default
 
-Event sourcing is **not** a default. Use it only when:
-- State history has explicit business value (audit trail, temporal queries)
-- The domain requires replaying events to reconstruct state
-- Stakeholders need to query past states
-
-When in doubt, use standard CQRS with PostgreSQL. The `event-sourcing` skill adds the ES layer additively on top of an existing Go service.
+Reach for ES only when state history has explicit business value (audit trail, replay, temporal queries). When in doubt, standard CQRS with PostgreSQL. The `event-sourcing` skill adds the ES layer — and owns all ES-only conventions (streams, raise/apply, versioned concurrency).
 
 ## Conventions
 
-- Entity IDs: ULID (preferred over UUID)
-- Stream IDs: `<entity>-{ulid}` (Go ES projects)
-- Aggregate methods raise domain events internally — external code never instantiates domain events directly
-- Optimistic concurrency via aggregate version (Go ES)
-- Domain events carry `OccurredAt time.Time` (Go) / `\DateTimeImmutable $occurredAt` (PHP) set at raise-time
-- Migrations: `database/` (Go) or `migrations/` (PHP)
-- No ORM in Go — raw SQL via `database/sql` + `lib/pq`
-- `wire_gen.go` is generated — never edit by hand; run `wire` in the `cmd/<app>` directory to regenerate
+- Entity IDs: ULID (`oklog/ulid/v2` in Go, `symfony/uid` in PHP), stored as `CHAR(26)`
+- Entities are plain structs/classes with a factory constructor and `CreatedAt` + nullable `ModifiedAt`; no ES machinery outside the `event-sourcing` skill
+- Command handlers dispatch domain events via an injected `EventDispatcher` after persistence; events are named past-tense
+- Commands/queries/events grouped by domain, one file per layer; handlers are structs with exported deps registered by struct literal in `main.go`
+- Repositories: interface in the domain package, implementation in infrastructure returning the interface; not-found → `nil, nil`
+
+## Working Principles
+
+- A green test suite is not proof of correctness — verify behavior against real data and paths before declaring something fixed. Hunt for silent failures (wrong behavior with no error) first.
+- Prove the mechanism of a bug before fixing it; no plausible-sounding patches.
+- Tests: testify; plain descriptive test names with `t.Run` subtests that read as sentences. Build and tests must be green before reporting work done.
+- Library-quality bar (as in `pubsub`/`hmac`): gofmt-clean, `go vet`, `go test -race -cover`, govulncheck in CI; semver + `/v2`-style module paths for libraries.
+- Workflow: GitHub Issue → `feature/<issue#>-<slug>` branch → PR. I review and merge every PR myself — agents never merge.
+
+## Skills
+
+Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feature` (extend), `event-sourcing` (additive ES layer), `new-php-service`, `new-react-app`. Each skill's `references/` files are authoritative for code shapes.
 
 ## Canonical Reference Repos
 
-- `pascalallen/go-clean-arch` — DDD + CQRS + hexagonal in Go (standard CQRS, no ES)
+- `pascalallen/carline` — production SaaS (private; local at `~/code/carline`). **Ground truth** for Go + React conventions; where it diverges from templates, carline wins.
+- `pascalallen/go-clean-arch` — the clean Go template the `new-go-service` skill clones
 - `pascalallen/es-go` — DDD + CQRS + hexagonal + event sourcing in Go
-- `pascalallen/Astral` — DDD + CQRS + hexagonal in PHP (custom PSR-11 DI, architecturally correct)
-- `pascalallen/DockerLaravel` — Laravel boilerplate with React/TS frontend
-- `pascalallen/DockerSymfony` — Symfony boilerplate
-
-When uncertain about pattern application in Go, treat `go-clean-arch` and `es-go` as ground truth. For PHP, apply the same structural patterns onto a bare Symfony skeleton.
+- `pascalallen/pubsub` — channel-based pub/sub library (the async escape hatch)
+- `pascalallen/Astral` — DDD + CQRS + hexagonal pattern in PHP; `pascalallen/DockerSymfony` — the Symfony/Docker base the `new-php-service` skill clones

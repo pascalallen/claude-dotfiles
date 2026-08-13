@@ -7,16 +7,35 @@ SKILLS_DIR="$CLAUDE_DIR/skills"
 
 mkdir -p "$SKILLS_DIR"
 
-# Symlink CLAUDE.md
-ln -sf "$DOTFILES_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+# 1. Prune stale links: anything dangling, or pointing into any claude-dotfiles
+#    checkout (old ~/projects path, legacy flat *.md skill links, this repo —
+#    relinked fresh below). Never touches real files or unrelated symlinks.
+for link in "$SKILLS_DIR"/* "$CLAUDE_DIR/CLAUDE.md"; do
+    [ -L "$link" ] || continue
+    target="$(readlink "$link")"
+    if [ ! -e "$link" ] || [[ "$target" == */claude-dotfiles/* ]]; then
+        rm "$link"
+        echo "pruned $link -> $target"
+    fi
+done
+
+# 2. CLAUDE.md — back up a pre-existing real file (never a symlink) first.
+if [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ ! -L "$CLAUDE_DIR/CLAUDE.md" ]; then
+    backup="$CLAUDE_DIR/CLAUDE.md.bak.$(date +%Y%m%d%H%M%S)"
+    mv "$CLAUDE_DIR/CLAUDE.md" "$backup"
+    echo "backed up existing CLAUDE.md -> $backup"
+fi
+ln -sfn "$DOTFILES_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
 echo "linked CLAUDE.md -> $CLAUDE_DIR/CLAUDE.md"
 
-# Symlink each skill
-for skill in "$DOTFILES_DIR/skills/"*.md; do
-    [ -e "$skill" ] || continue
-    skill_name=$(basename "$skill")
-    ln -sf "$skill" "$SKILLS_DIR/$skill_name"
-    echo "linked $skill_name -> $SKILLS_DIR/$skill_name"
+# 3. Skills — link each skill DIRECTORY (Claude Code discovers
+#    ~/.claude/skills/<name>/SKILL.md). -n so re-runs replace the link instead
+#    of descending into it.
+for skill_dir in "$DOTFILES_DIR/skills/"*/; do
+    [ -f "$skill_dir/SKILL.md" ] || continue
+    name="$(basename "$skill_dir")"
+    ln -sfn "${skill_dir%/}" "$SKILLS_DIR/$name"
+    echo "linked skill $name -> $SKILLS_DIR/$name"
 done
 
 echo ""

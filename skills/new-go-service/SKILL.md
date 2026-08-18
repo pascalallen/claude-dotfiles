@@ -72,6 +72,32 @@ git mv cmd/app cmd/<app>
 #    - Dockerfile                                         → COPY package path + build target
 sed -i '' 's#internal/app/#internal/<app>/#g' internal/<app>/infrastructure/database/migrate.go
 sed -i '' 's#internal/app/#internal/<app>/#g; s#\./cmd/app#./cmd/<app>#g' Dockerfile
+
+# 6. Replace bin/up and bin/down — the template's `if [ "$1" == "prod" ]` branch
+#    is NOT wanted in scaffolds. Overwrite both with the plain dev form
+#    (bin/exec stays exactly as copied):
+cat > bin/up <<'EOF'
+#!/usr/bin/env bash
+
+# change to the project root
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR"/.. || exit
+
+docker compose build \
+  && docker compose up -d \
+  && docker compose logs -f
+EOF
+
+cat > bin/down <<'EOF'
+#!/usr/bin/env bash
+
+# change to the project root
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR"/.. || exit
+
+docker compose down
+EOF
+chmod +x bin/up bin/down bin/exec
 ```
 
 > **Dockerfile caution:** only the package path (`internal/app/` → `internal/<app>/`)
@@ -82,6 +108,7 @@ sed -i '' 's#internal/app/#internal/<app>/#g; s#\./cmd/app#./cmd/<app>#g' Docker
 > On macOS `sed -i ''` takes an empty backup arg; on Linux use `sed -i`.
 > After renaming, grep to confirm nothing stale remains:
 > `grep -rn 'go-clean-arch\|internal/app/\|cmd/app' . --include='*.go' Dockerfile go.mod`
+> and that no `prod` branch survived in the scripts: `grep -n '"prod"' bin/up bin/down` (must be empty).
 
 ## Align messaging to current conventions
 
@@ -143,6 +170,10 @@ bin/exec go test ./...       # tests
 bin/exec go build ./...      # build
 bin/down                     # stop
 ```
+
+`bin/up` / `bin/down` take **no arguments** — there is no `prod` mode. Production
+is `docker compose -f compose.yaml up -d` run by the deploy pipeline, not by these
+scripts.
 
 DB env (`.env`, see `.env.example`): `DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD`;
 `APP_ENV` selects JSON vs text logging; `GIN_MODE`, `PORT`, `TOKEN_SECRET` as needed.

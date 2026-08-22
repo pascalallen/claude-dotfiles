@@ -1,7 +1,8 @@
 # claude-dotfiles
 
-Personal Claude Code configuration for Pascal Allen — a global `CLAUDE.md` plus
-scaffold/extension skills, symlinked into `~/.claude/`.
+Personal Claude Code configuration for Pascal Allen — a global `CLAUDE.md`,
+user `settings.json` (permissions + hooks), and scaffold/extension skills,
+symlinked into `~/.claude/`.
 
 ## Philosophy
 
@@ -29,13 +30,38 @@ cd ~/code/claude-dotfiles
 ```
 
 `install.sh` prunes stale/dangling links from previous checkouts, backs up any
-pre-existing real `~/.claude/CLAUDE.md`, then symlinks `CLAUDE.md` and each
+pre-existing real `~/.claude/CLAUDE.md` / `~/.claude/settings.json`, then
+symlinks `CLAUDE.md`, `settings.json`, each `hooks/*.sh` script, and each
 `skills/<name>/` directory into `~/.claude/`. Re-running is idempotent. Restart
 Claude Code after installing.
 
 ```bash
 ./uninstall.sh   # removes only links owned by a claude-dotfiles checkout
 ```
+
+**Scope caveat:** everything here applies only to machines where `install.sh`
+has run. Claude Code on the web / remote sessions never see `~/.claude/` —
+anything a remote session needs (SessionStart dep-warming, project permission
+allowlists, MCP servers) must live in the project repo's own `.claude/` and
+`.mcp.json`.
+
+## Settings & hooks
+
+`settings.json` is the user-scope config, and because the installed file is a
+symlink, any change Claude Code writes to user settings shows up in `git
+status` here — config drift is tracked, not silent.
+
+- **Permissions allowlist** — pre-approves the verify loop so sessions don't
+  prompt for it: the containerized wrappers (`bin/exec go ...`,
+  `bin/exec gofmt ...`, `bin/yarn ...` — sandboxed by Docker), native
+  `go build/test/vet/generate` + `gofmt`, and read-only git (`status`,
+  `diff`, `log`). Trim or extend to taste; project-specific grants belong in
+  that project's `.claude/settings.json`, not here.
+- **`hooks/gofmt-on-edit.sh`** (PostToolUse on `Edit|Write`) — runs `gofmt -w`
+  on any `.go` file Claude touches. This enforces the "gofmt before finishing"
+  rule deterministically instead of relying on the model to remember it. The
+  script no-ops (exit 0) for non-Go files or when `gofmt`/`jq`/`python3` are
+  missing, so it can never block an edit.
 
 ## How skills work
 
@@ -64,6 +90,8 @@ authoritative code shapes in `references/` files loaded on demand.
 
 ```
 CLAUDE.md            global config → ~/.claude/CLAUDE.md
+settings.json        user settings: permissions + hooks → ~/.claude/settings.json
+hooks/               hook scripts → ~/.claude/hooks/<name>.sh
 skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
 docs/adr/            architecture decision records
 install.sh           idempotent symlink install (prunes stale links)

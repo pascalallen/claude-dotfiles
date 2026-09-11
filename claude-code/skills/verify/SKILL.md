@@ -15,7 +15,7 @@ failure or skip ahead to later steps once one fails.
 ```bash
 go build ./...
 go vet ./...
-test -z "$(gofmt -l cmd internal)"     # non-empty output = files need gofmt -w
+gofmt -l cmd internal     # empty output = pass; any filename printed = fail (needs gofmt -w)
 go test -race -cover ./...
 ```
 
@@ -29,8 +29,10 @@ through it instead: `bin/exec go build ./...`, etc.
 
 ## Frontend gate (only if `web/app/` exists)
 
-Run from the repo root — don't `cd` into `web/app` (no `Bash(cd *)` allow rule
-means a bare `cd` prompts mid-gate); use `yarn --cwd`:
+Run from the repo root using `yarn --cwd web/app` rather than `cd web/app &&
+yarn ...` — it keeps each step a single command that matches one allow rule,
+instead of a compound `cd && yarn` command Claude Code has to match as two
+separate pieces:
 
 ```bash
 yarn --cwd web/app lint

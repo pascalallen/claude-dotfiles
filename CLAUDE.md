@@ -39,6 +39,8 @@ Dependency direction is strict: infrastructure imports application and domain; d
 - ESLint 9 flat config + Prettier (120 cols, single quotes); `@`-prefixed TS path aliases
 - Custom observable stores for auth/client state — no Redux
 - Default shape: lives in `web/app/` of the Go service, Webpack emits to `web/static/`, Go serves the template with runtime config injected as base64 JSON
+- Jest + Testing Library for frontend tests; tests mock the service layer, never axios; `yarn lint && yarn typecheck && yarn test && yarn build` is the gate
+- Frontend assets are read from disk by the Go binary (`web/template`, `web/static`); deploy ships them beside the binary
 
 ## Event Sourcing — Not a Default
 
@@ -60,9 +62,13 @@ Reach for ES only when state history has explicit business value (audit trail, r
 - Library-quality bar (as in `pubsub`/`hmac`): gofmt-clean, `go vet`, `go test -race -cover`, govulncheck in CI; semver + `/v2`-style module paths for libraries.
 - Workflow: GitHub Issue → `feature/<issue#>-<slug>` branch → PR. I review and merge every PR myself — agents never merge.
 
+## Claude Code Repo Conventions
+
+Every repo commits `.claude/settings.json` (permissions + gofmt/prettier `PostToolUse` hooks), `.claude/rules/` (path-scoped), a project `verify` skill, and `.github/workflows/{ci,claude,claude-review}.yml`. `.claude/settings.local.json`, `.mcp.json`, and `CLAUDE.local.md` stay gitignored. Project CLAUDE.md files stay under 200 lines. The kit lives in `claude-dotfiles/claude-code/` and is applied by the `claude-code-repo-setup` skill. When a convention changes in any repo, update this dotfiles repo in the same piece of work — it is not a follow-up task.
+
 ## Skills
 
-Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feature` (extend), `event-sourcing` (additive ES layer), `new-php-service`, `new-react-app`. Each skill's `references/` files are authoritative for code shapes.
+Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feature` (extend), `event-sourcing` (additive ES layer), `new-php-service`, `new-react-app`, `claude-code-repo-setup` (project Claude Code kit). Each skill's `references/` files are authoritative for code shapes.
 
 ## Canonical Reference Repos
 

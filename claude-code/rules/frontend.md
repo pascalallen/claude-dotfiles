@@ -6,14 +6,15 @@ paths:
 # Frontend conventions
 
 - Path aliases (`@assets @components @domain @hooks @pages @routes @services
-  @stores @types @utilities`) and their import order are enforced by
-  `eslint-plugin-import` in `eslint.config.js` — don't add ad hoc relative
-  imports (`../../services/X`) where an alias exists; `yarn lint` will flag
-  the ordering even if the import itself works.
-- **`request.ts`/`ApiService` façade rule**: nothing outside `src/services/`
-  touches `ApiService` (or axios) directly. Components and hooks call a
-  `src/services/*Service.ts` function; that function is the only thing that
-  imports `ApiService`.
+  @stores @types @utilities` — `@stores` only when the app has an
+  auth/client store; omit it, and its eslint `import/order` pathGroup, in
+  no-auth apps) and their import order are enforced by `eslint-plugin-import`
+  in `eslint.config.js` — don't add ad hoc relative imports
+  (`../../services/X`) where an alias exists; `yarn lint` will flag the
+  ordering even if the import itself works.
+- **`request.ts`/`ApiService` façade rule**: components/hooks call
+  `utilities/request.ts` (via a `services/*Service.ts` class); only
+  `request.ts` imports `ApiService`.
 - Server state lives in TanStack Query hooks under `src/hooks/queries/`
   (`useQuery`/`useMutation` wrapping a service function) — don't fetch data
   with a bare `useEffect`.

@@ -66,7 +66,8 @@ green test suite alone is not.
 
 ## Project-specific checks
 
-<!-- e.g. wire regeneration reminder, manual e2e recipe -->
+<!-- e.g. govulncheck (go run golang.org/x/vuln/cmd/govulncheck@latest ./...),
+     wire regeneration reminder, manual e2e recipe -->
 
 This section is the slot for anything this repo's gate needs beyond the Go
 and frontend gates above — append here instead of improvising a location

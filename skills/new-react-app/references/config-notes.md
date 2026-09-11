@@ -12,8 +12,9 @@ they encode and what to change per app.
   `../static/assets` (mode 1). NOT Vite, NOT CRA.
 - **Yarn** (`yarn ci` = `yarn install --frozen-lockfile`)
 - **@tanstack/react-query v5** for server state; **axios** behind a single
-  `ApiService` class (JSend-aware, JWT refresh-retry interceptor) — components
-  never call axios directly
+  `ApiService` class (JSend-aware, JWT refresh-retry interceptor) —
+  components/hooks call `utilities/request.ts` (via a `services/*Service.ts`
+  class); only `request.ts` imports `ApiService`
 - **react-router-dom v7** with `createBrowserRouter` under `src/routes/`
 - **Bootstrap 5.3 + react-bootstrap + @pascalallen/react-form-components** (his
   own form library), SCSS, `data-bs-theme="dark"`; icons via Font Awesome kit

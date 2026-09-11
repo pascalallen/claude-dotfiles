@@ -9,7 +9,7 @@ jobs:
   go:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v5
         with:
@@ -19,7 +19,7 @@ jobs:
       - run: go mod verify
       - run: go build ./...
       - run: go vet ./...
-      - run: test -z "$(gofmt -l cmd internal)"
+      - run: test -z "$(gofmt -l cmd internal)" || (gofmt -l cmd internal && exit 1)
       - run: go test -race -cover ./...
       - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
@@ -29,7 +29,7 @@ jobs:
       run:
         working-directory: web/app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:

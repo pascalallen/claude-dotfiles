@@ -27,6 +27,9 @@ paths:
 - Tests use **testify** with one `TestXxx` per type/unit and `t.Run` subtests
   named as sentences (`t.Run("returns nil when the record does not exist", ...)`),
   not terse label-style names.
-- `gofmt -l .` and `go vet ./...` must both be clean before code is considered
-  done — this is enforced by the `gofmt` PostToolUse hook and CI, but don't
-  rely on the hook alone; run the gate yourself before claiming a task done.
+- `gofmt -l cmd internal` and `go vet ./...` must both be clean before code is
+  considered done — this is enforced by the `gofmt` PostToolUse hook and CI,
+  but don't rely on the hook alone; run the gate yourself before claiming a
+  task done. **Never run `gofmt -l .`** in a repo that has `web/app` — it
+  walks the filesystem regardless of Go module boundaries and sweeps up the
+  stray `.go` files `node_modules` ships, producing false positives.

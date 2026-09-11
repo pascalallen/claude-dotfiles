@@ -17,9 +17,13 @@ paths:
   returning a `gin.HandlerFunc`, not method-per-struct controllers. Responses
   go through the shared JSend responders — don't hand-roll response envelopes.
 - `wire_gen.go` is **generated** — never hand-edit it. After changing a Wire
-  provider, regenerate with `go generate ./internal/<app>/infrastructure/container/...`
-  (not a bare `go tool wire` unless the project's own docs say otherwise —
-  check the project's CLAUDE.md for the exact command).
+  provider, regenerate via the container package's `//go:generate` directive
+  (`go generate ./internal/<app>/infrastructure/container/...`); if the
+  package has no directive, `(cd internal/<app>/infrastructure/container &&
+  go tool wire)`. Either way, **confirm it actually changed** —
+  `go generate` with no directive present prints nothing and exits 0, which
+  looks like success but isn't: `git diff --stat
+  internal/<app>/infrastructure/container/wire_gen.go`.
 - Repository implementations return `nil, nil` for "not found", never a
   sentinel error — callers branch on a nil check, not error-type matching.
 - Thread `ctx context.Context` through every handler and repository method;

@@ -16,7 +16,7 @@ Dependency direction is strict: infrastructure imports application and domain; d
 
 ## Default Go Stack
 
-- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go generate ./internal/<app>/infrastructure/container/...` via the container package's `go:generate` directive; a bare `go tool wire` remains fine in repos that pin wire as a go tool)
+- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate via the container package's `//go:generate` directive (`go generate ./internal/<app>/infrastructure/container/...`); if the package has no directive, `(cd internal/<app>/infrastructure/container && go tool wire)`; either way confirm `wire_gen.go` actually changed with `git diff --stat`)
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
@@ -64,7 +64,7 @@ Reach for ES only when state history has explicit business value (audit trail, r
 
 ## Claude Code Repo Conventions
 
-Every repo commits `.claude/settings.json` (permissions + gofmt/prettier `PostToolUse` hooks), `.claude/rules/` (path-scoped), a project `verify` skill, and `.github/workflows/{ci,claude,claude-review}.yml`. `.claude/settings.local.json`, `.mcp.json`, and `CLAUDE.local.md` stay gitignored. Project CLAUDE.md files stay under 200 lines. The kit lives in `claude-dotfiles/claude-code/` and is applied by the `claude-code-repo-setup` skill. When a convention changes in any repo, update this dotfiles repo in the same piece of work — it is not a follow-up task.
+Every repo commits `.claude/settings.json` (permissions + gofmt/prettier `PostToolUse` hooks), `.claude/rules/` (path-scoped), a project `verify` skill, and `.github/workflows/{ci,claude,claude-review}.yml`. `.claude/settings.local.json`, `.mcp.json`, and `CLAUDE.local.md` stay gitignored. Project CLAUDE.md files stay under 200 lines. The kit lives in `claude-dotfiles/claude-code/` and is applied by the `claude-code-repo-setup` skill, adapted per stack — see that skill (no `yarn` job/prettier hook without a frontend; this dotfiles repo itself carries only CI). When a convention changes in any repo, update this dotfiles repo in the same piece of work — it is not a follow-up task.
 
 ## Skills
 

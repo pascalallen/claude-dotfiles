@@ -75,11 +75,16 @@ CLAUDE.md       — project-level ES notes block (see references)
 
 ```bash
 bin/exec go mod tidy
-(cd internal/<app>/infrastructure/container && go tool wire)   # providers changed
+bin/exec go generate ./internal/<app>/infrastructure/container/...   # if container.go has //go:generate go tool wire
+bin/exec sh -c 'cd internal/<app>/infrastructure/container && go tool wire'   # fallback if it doesn't
+git diff --stat internal/<app>/infrastructure/container/wire_gen.go   # confirm it actually changed
 bin/exec go build ./...   # MUST pass
 bin/exec go test ./...    # MUST pass
 ```
 
 `wire_gen.go` must be regenerated after swapping repository → event store
-providers. EventStoreDB admin UI is at `http://localhost:2113` for loading
+providers — `go generate` exiting 0 with no `//go:generate` directive present
+is a silent no-op, not success; the `git diff --stat` line is what actually
+proves it (see `new-go-service` for adding the directive to a scaffold
+missing one). EventStoreDB admin UI is at `http://localhost:2113` for loading
 projections and inspecting streams.

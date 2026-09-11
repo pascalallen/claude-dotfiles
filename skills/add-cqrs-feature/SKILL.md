@@ -91,13 +91,19 @@ scaffolds may lack `ctx` (match the service, or migrate it first via
 
 ```bash
 go get -tool github.com/google/wire/cmd/wire      # once, if not already in go.mod
-(cd internal/<app>/infrastructure/container && go tool wire)
+go generate ./internal/<app>/infrastructure/container/...   # if container.go has //go:generate go tool wire
+(cd internal/<app>/infrastructure/container && go tool wire) # fallback if it doesn't
+git diff --stat internal/<app>/infrastructure/container/wire_gen.go   # confirm it actually changed
 go build ./...     # MUST pass
 go test ./...      # MUST pass
 ```
 
 > Use `go tool wire`, not a stale global `wire` binary (older-toolchain wire
 > refuses newer modules). In Docker: `bin/exec` inside the Go container.
+> `go generate` with no `//go:generate` directive in the package prints
+> nothing and exits 0 — that is NOT proof `wire_gen.go` regenerated; the
+> `git diff --stat` step above is what actually confirms it (see
+> `new-go-service` for adding the directive to a scaffold missing one).
 
 Add a testify test for new domain behavior — plain descriptive names with `t.Run`
 sentence subtests. Do not report the feature done until build and tests are green.

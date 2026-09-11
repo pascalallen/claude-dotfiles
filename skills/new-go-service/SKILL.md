@@ -139,6 +139,23 @@ go build ./...      # MUST pass
 go test ./...       # MUST pass
 ```
 
+Right after pinning wire, add the `//go:generate` directive to the container
+package so `go generate` actually does something — **without it, `go generate
+./internal/<app>/infrastructure/container/...` prints nothing, exits 0, and
+`wire_gen.go` silently stays stale** (this is exactly the failure mode
+`add-cqrs-feature`/`event-sourcing` warn about when they regenerate):
+
+```bash
+# internal/<app>/infrastructure/container/container.go — prepend above `package container`:
+f=internal/<app>/infrastructure/container/container.go
+{ printf '//go:generate go tool wire\n'; cat "$f"; } > "$f.tmp" && mv "$f.tmp" "$f"
+```
+
+(portable across macOS/Linux `sed` flavors; or just open the file and add the
+`//go:generate go tool wire` line above the `package container` declaration by
+hand — either way, it must land in `container.go`, not `wire.go`, so it's not
+clobbered by a Wire regeneration.)
+
 Do not consider the scaffold done until `go build ./...` and `go test ./...` are
 both green. (Locally you have Go directly; in the Docker flow use
 `bin/exec go build ./...` after `bin/up`.)
@@ -146,7 +163,21 @@ both green. (Locally you have Go directly; in the Docker flow use
 **Regenerating Wire** (only after you change providers):
 
 ```bash
+go generate ./internal/<app>/infrastructure/container/...
+```
+
+If the package has no `//go:generate` directive yet (an older scaffold, or you
+skipped the step above), fall back to calling wire directly:
+
+```bash
 (cd internal/<app>/infrastructure/container && go tool wire)
+```
+
+**Either way, confirm `wire_gen.go` actually changed** — `go generate` exiting
+0 is not proof it did anything:
+
+```bash
+git diff --stat internal/<app>/infrastructure/container/wire_gen.go
 ```
 
 > Use `go tool wire`, not a globally-installed `wire` binary: a `wire` built with
@@ -179,3 +210,6 @@ DB env (`.env`, see `.env.example`): `DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWOR
 `APP_ENV` selects JSON vs text logging; `GIN_MODE`, `PORT`, `TOKEN_SECRET` as needed.
 `session.go` uses `sslmode=disable` for local — set `DB_SSLMODE=require` style
 handling before deploying to managed Postgres.
+
+Once the service builds and tests pass, apply the Claude Code kit with the
+`claude-code-repo-setup` skill.

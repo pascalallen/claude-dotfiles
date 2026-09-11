@@ -55,7 +55,7 @@ cp ~/code/carline/web/app/.prettierrc.json .
 # @pascalallen/react-form-components, sass, eslint 9 flat + prettier.
 
 yarn install
-mkdir -p src/{assets,components,domain,hooks,pages,routes,services,stores,types,utilities}
+mkdir -p src/{assets,components,domain,hooks/queries,pages,routes,services,stores,types,utilities}
 ```
 
 Then build out `src/` following the structure and conventions in

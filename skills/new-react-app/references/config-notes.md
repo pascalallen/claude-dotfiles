@@ -37,7 +37,7 @@ src/
   assets/          images, scss
   components/      shared UI components
   domain/          TS domain types/models (mirror backend JSON)
-  hooks/           custom hooks (data fetching wraps TanStack Query)
+  hooks/queries/   TanStack Query hooks (useQuery/useMutation wrapping a service)
   pages/           route-level components
   routes/          createBrowserRouter config, route guards
   services/        ApiService (axios), WebSocket service
@@ -109,8 +109,12 @@ func HandleDefault() gin.HandlerFunc {
 A package-level `var env = map[string]string{...}` reads `os.Getenv` at Go
 package-init time, which races `godotenv/autoload`'s own package init — carline
 gets away with it only because of import-path ordering luck, not a guarantee.
-Building the map inside the handler closure defers the read until request time,
-after `main.go`'s `godotenv.Load()` has definitely run.
+Building the map inside `HandleDefault()` instead means the read happens when
+`HandleDefault()` is *called* — i.e. at route registration in `main.go`, which
+runs after `godotenv.Load()` has definitely completed. It is not deferred all
+the way to request time: the closure returned by `HandleDefault()` captures
+`encoded` once and reuses it for every request; only the wrapping call happens
+after `.env` is loaded, not per-request.
 
 Keys are **per app**, not a fixed set: carline uses `APP_BASE_URL`,
 `APP_BASE_URL_WS`, `APP_ENV`; `portfolio-agent` uses `APP_ENV`,
@@ -191,8 +195,9 @@ rather than assuming carline's.
 
 ## Conventions for new code
 
-- Server state → TanStack Query hooks in `src/hooks/` (`useQuery`/`useMutation`
-  wrapping `ApiService`); client/auth state → observable store.
+- Server state → TanStack Query hooks in `src/hooks/queries/` (`useQuery`/
+  `useMutation` wrapping a service function); client/auth state → observable
+  store.
 - Route guards read the auth store; JWT lives with the store, refresh handled in
   the ApiService interceptor (single retry with `_retry` flag) — auth apps only.
 - Strict TS: explicit interfaces in `src/domain/` for every API payload; no `any`.

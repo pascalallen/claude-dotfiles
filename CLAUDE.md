@@ -16,7 +16,7 @@ Dependency direction is strict: infrastructure imports application and domain; d
 
 ## Default Go Stack
 
-- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go tool wire` in `infrastructure/container/`)
+- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go generate ./internal/<app>/infrastructure/container/...` via the container package's `go:generate` directive; a bare `go tool wire` remains fine in repos that pin wire as a go tool)
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders

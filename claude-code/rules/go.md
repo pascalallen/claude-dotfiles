@@ -2,6 +2,7 @@
 paths:
   - "cmd/**"
   - "internal/**"
+  - "**/*.go"
 ---
 
 # Go conventions

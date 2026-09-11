@@ -80,3 +80,7 @@ bin/phpunit            # MUST pass
 Do not consider the scaffold done until the containers are healthy, migrations
 run, and PHPUnit is green. Add a project-level `CLAUDE.md` (template in
 `references/structure.md`).
+
+Once the service is green, apply the Claude Code kit with the
+`claude-code-repo-setup` skill (it's Go-shaped by default — see its
+"Non-Go backend" note for what to adapt).

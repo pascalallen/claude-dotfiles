@@ -1,8 +1,9 @@
 # claude-dotfiles
 
 Personal Claude Code configuration for Pascal Allen — a global `CLAUDE.md`,
-user `settings.json` (permissions + hooks), and scaffold/extension skills,
-symlinked into `~/.claude/`.
+user `settings.json` (permissions + hooks), and scaffold/extension skills
+symlinked into `~/.claude/`, plus a project-level `claude-code/` kit copied
+into target repos.
 
 ## Philosophy
 
@@ -97,13 +98,16 @@ approach as the scaffold skills (ADR 0001).
 ## Repo layout
 
 ```
-CLAUDE.md            global config → ~/.claude/CLAUDE.md
-settings.json        user settings: permissions + hooks → ~/.claude/settings.json
-hooks/               hook scripts → ~/.claude/hooks/<name>.sh
-skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
-claude-code/         canonical project-level kit, copied into target repos by
-                     claude-code-repo-setup (not symlinked — see its README)
-docs/adr/            architecture decision records
-install.sh           idempotent symlink install (prunes stale links)
-uninstall.sh         removes this repo's links
+CLAUDE.md                    global config → ~/.claude/CLAUDE.md
+settings.json                user settings: permissions + hooks → ~/.claude/settings.json
+hooks/                       hook scripts → ~/.claude/hooks/<name>.sh
+skills/<name>/               SKILL.md + references/ → ~/.claude/skills/<name>
+claude-code/                 canonical project-level kit, copied into target
+                             repos by claude-code-repo-setup (not symlinked —
+                             see its README)
+docs/adr/                    architecture decision records
+.github/workflows/ci.yml     shellcheck + SKILL.md frontmatter checks for
+                             this repo itself
+install.sh                   idempotent symlink install (prunes stale links)
+uninstall.sh                 removes this repo's links
 ```

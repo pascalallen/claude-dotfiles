@@ -97,3 +97,6 @@ Mode 1: confirm the Go template serves the built bundle and the runtime config
 injection works (`window` config decoded from base64 JSON — see
 `references/config-notes.md`). CI runs, in order: install (`--frozen-lockfile`)
 → lint → typecheck → test → build, alongside the Go checks.
+
+Once the frontend builds, lints, and tests pass, apply the Claude Code kit
+with the `claude-code-repo-setup` skill.

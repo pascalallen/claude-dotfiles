@@ -70,13 +70,21 @@ Skills are **model-invoked, not slash commands**: Claude Code reads each
 when the task matches it. Each skill keeps its `SKILL.md` short and puts
 authoritative code shapes in `references/` files loaded on demand.
 
+One skill is a special case: `claude-code-repo-setup` doesn't scaffold Go/PHP/
+React code — it copies the **project-level** Claude Code kit in
+[`claude-code/`](claude-code/) (a committed `.claude/settings.json`, path-scoped
+`.claude/rules/`, a `verify` skill, and GitHub Actions workflows) into a target
+repo's own `.claude/` and `.github/workflows/`, the same clone-a-living-template
+approach as the scaffold skills (ADR 0001).
+
 | Skill | Use when | What it does |
 |-------|----------|--------------|
 | `new-go-service` | Creating a new Go backend | Clones + renames `go-clean-arch`: DDD/hexagonal/CQRS, Wire, Gin, `database/sql` + `lib/pq`, golang-migrate, synchronous in-process buses, Docker |
 | `add-cqrs-feature` | Extending an existing Go service | Adds a command/query/event+listener and optional HTTP route following the grouped-by-domain conventions, with exact insertion points |
 | `event-sourcing` | The domain explicitly needs audit/replay/temporal queries | Additively swaps PostgreSQL persistence for EventStoreDB; owns all ES-only conventions |
 | `new-php-service` | Creating a new PHP backend | DockerSymfony base + imposed `src/{Domain,Application,Infrastructure}` structure, invokable handlers, ULIDs, XML Doctrine mappings |
-| `new-react-app` | Adding a frontend | Production carline stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
+| `new-react-app` | Adding a frontend | Production carline stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config, Jest + Testing Library |
+| `claude-code-repo-setup` | A repo lacks `.claude/settings.json`/CI, or CLAUDE.md is stale | Copies the canonical kit from [`claude-code/`](claude-code/) — settings, path-scoped rules, the project `verify` skill, and CI + `claude-code-action` workflows |
 
 ## Canonical Reference Repos
 
@@ -93,6 +101,8 @@ CLAUDE.md            global config → ~/.claude/CLAUDE.md
 settings.json        user settings: permissions + hooks → ~/.claude/settings.json
 hooks/               hook scripts → ~/.claude/hooks/<name>.sh
 skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
+claude-code/         canonical project-level kit, copied into target repos by
+                     claude-code-repo-setup (not symlinked — see its README)
 docs/adr/            architecture decision records
 install.sh           idempotent symlink install (prunes stale links)
 uninstall.sh         removes this repo's links

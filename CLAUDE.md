@@ -64,7 +64,7 @@ Reach for ES only when state history has explicit business value (audit trail, r
 
 ## Claude Code Repo Conventions
 
-Every repo commits `.claude/settings.json` (permissions + gofmt/prettier `PostToolUse` hooks), `.claude/rules/` (path-scoped), a project `verify` skill, and `.github/workflows/{ci,claude,claude-review}.yml`. `.claude/settings.local.json`, `.mcp.json`, and `CLAUDE.local.md` stay gitignored. Project CLAUDE.md files stay under 200 lines. The kit lives in `claude-dotfiles/claude-code/` and is applied by the `claude-code-repo-setup` skill, adapted per stack — see that skill (no `yarn` job/prettier hook without a frontend; this dotfiles repo itself carries only CI). When a convention changes in any repo, update this dotfiles repo in the same piece of work — it is not a follow-up task.
+Every repo commits `.claude/settings.json` (permissions + gofmt/prettier `PostToolUse` hooks), `.claude/rules/` (path-scoped), a project `verify` skill, and `.github/workflows/{ci,claude,claude-review}.yml`. `.claude/settings.local.json`, `.mcp.json`, and `CLAUDE.local.md` stay gitignored. Project CLAUDE.md files stay under 200 lines. The kit lives in `claude-dotfiles/claude-code/` and is applied by the `claude-code-repo-setup` skill, adapted per stack — see that skill (no `yarn` job/prettier hook without a frontend; this dotfiles repo itself carries only CI). My user-level settings/hooks live in this dotfiles repo's own `settings.json` + `hooks/` (installed by `install.sh`, machine-local) — project-level config always comes from `claude-code/`, since that's what remote sessions and other machines actually see. When a convention changes in any repo, update this dotfiles repo in the same piece of work — it is not a follow-up task.
 
 ## Skills
 

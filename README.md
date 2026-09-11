@@ -64,6 +64,14 @@ status` here — config drift is tracked, not silent.
   script no-ops (exit 0) for non-Go files or when `gofmt`/`jq`/`python3` are
   missing, so it can never block an edit.
 
+This user-level gofmt hook and the project-level gofmt/prettier `PostToolUse`
+hooks in `claude-code/settings.json` intentionally overlap. The project-level
+copy is what actually runs in Claude Code on the web / remote sessions and on
+any machine without these dotfiles installed — exactly the gap the scope
+caveat above describes, and exactly why the `claude-code/` kit exists as a
+committed, per-repo fallback rather than a dependency on this repo being
+installed. See the `claude-code-repo-setup` skill to apply that kit to a repo.
+
 ## How skills work
 
 Skills are **model-invoked, not slash commands**: Claude Code reads each

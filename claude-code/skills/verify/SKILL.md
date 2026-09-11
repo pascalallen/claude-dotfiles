@@ -15,9 +15,14 @@ failure or skip ahead to later steps once one fails.
 ```bash
 go build ./...
 go vet ./...
-test -z "$(gofmt -l .)"     # non-empty output = files need gofmt -w
+test -z "$(gofmt -l cmd internal)"     # non-empty output = files need gofmt -w
 go test -race -cover ./...
 ```
+
+**Never run `gofmt -l .`** in a repo that has `web/app` — it walks the
+filesystem, not Go module boundaries, and sweeps up the stray `.go` files
+`node_modules` ships, producing false positives. Target `cmd internal`
+(or whatever top-level Go package roots the repo actually has) instead.
 
 If the project runs Go inside Docker (check for `bin/exec`), run each command
 through it instead: `bin/exec go build ./...`, etc.
@@ -56,3 +61,11 @@ A table with one row per step actually run:
 Stop at the first failing step, show its full output, and do not report later
 steps as passed — they didn't run. A green table is the bar for "done"; a
 green test suite alone is not.
+
+## Project-specific checks
+
+<!-- e.g. wire regeneration reminder, manual e2e recipe -->
+
+This section is the slot for anything this repo's gate needs beyond the Go
+and frontend gates above — append here instead of improvising a location
+elsewhere in the file. Add its steps to the Report table too.

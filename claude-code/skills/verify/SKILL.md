@@ -1,7 +1,7 @@
 ---
 name: verify
 description: Run the full verification gate for this repo (Go build/vet/gofmt/race tests and, when web/app exists, yarn lint/typecheck/test/build) and report pass/fail per step. Use before claiming work is done, before committing, and before opening a PR.
-allowed-tools: Bash(go *) Bash(gofmt *) Bash(yarn *) Bash(bin/exec *) Bash(bin/yarn *)
+allowed-tools: Bash(go *) Bash(gofmt *) Bash(yarn *) Bash(yarn --cwd web/app *) Bash(bin/exec *) Bash(bin/yarn *)
 ---
 
 # Verify
@@ -24,17 +24,19 @@ through it instead: `bin/exec go build ./...`, etc.
 
 ## Frontend gate (only if `web/app/` exists)
 
+Run from the repo root — don't `cd` into `web/app` (no `Bash(cd *)` allow rule
+means a bare `cd` prompts mid-gate); use `yarn --cwd`:
+
 ```bash
-cd web/app
-yarn lint
-yarn typecheck
-yarn test --ci
-yarn build
+yarn --cwd web/app lint
+yarn --cwd web/app typecheck
+yarn --cwd web/app test --ci
+yarn --cwd web/app build
 ```
 
 If the project runs Yarn inside Docker (check for `bin/yarn`), use
 `bin/yarn lint`, `bin/yarn typecheck`, `bin/yarn test --ci`, `bin/yarn build`
-instead, run from the repo root.
+instead — those already run from the repo root.
 
 ## Report
 

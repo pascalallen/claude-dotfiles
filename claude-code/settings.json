@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)", "Bash(go test *)", "Bash(go vet *)", "Bash(go mod *)", "Bash(go generate *)",
+      "Bash(go run *)", "Bash(go list *)", "Bash(gofmt *)", "Bash(go tool *)",
+      "Bash(yarn lint *)", "Bash(yarn lint)", "Bash(yarn typecheck)", "Bash(yarn test *)", "Bash(yarn test)",
+      "Bash(yarn build)", "Bash(yarn dev)", "Bash(yarn install *)", "Bash(yarn install)",
+      "Bash(bin/exec *)", "Bash(bin/yarn *)", "Bash(bin/swag)",
+      "Bash(git status *)", "Bash(git diff *)", "Bash(git log *)", "Bash(git branch *)",
+      "Bash(gh pr view *)", "Bash(gh issue view *)", "Bash(gh run *)"
+    ],
+    "deny": [
+      "Read(./.env)", "Read(./.env.*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; case \"$f\" in *.go) gofmt -w \"$f\";; esac; } 2>/dev/null || true",
+            "statusMessage": "gofmt"
+          },
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; case \"$f\" in */web/app/*.ts|*/web/app/*.tsx|*/web/app/*.scss) p=\"$CLAUDE_PROJECT_DIR/web/app/node_modules/.bin/prettier\"; [ -x \"$p\" ] && \"$p\" --write \"$f\" >/dev/null;; esac; } 2>/dev/null || true",
+            "statusMessage": "prettier"
+          }
+        ]
+      }
+    ]
+  }
+}

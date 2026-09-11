@@ -36,6 +36,11 @@ cp ~/code/claude-dotfiles/claude-code/workflows/claude-review.yml .github/workfl
   prettier hook's `case` pattern.
 - **Non-Go backend**: drop `rules/go.md` and the `go` job in `ci.yml`; adapt
   `verify/SKILL.md`'s Go gate to the language's build/lint/test commands.
+- **Project-specific gates**: fill in `verify/SKILL.md`'s `## Project-specific
+  checks` section with anything this repo's gate needs beyond the standard Go
+  and frontend gates (a wire regeneration reminder, a manual e2e recipe,
+  etc.) — that section is the slot for it; don't improvise a location
+  elsewhere in the file.
 
 ## Project CLAUDE.md checklist
 
@@ -63,6 +68,17 @@ Confirm these are present (add any missing):
 .superpowers/
 CLAUDE.local.md
 ```
+
+**Frontend repos** (`web/app/` present): also create a **tracked** (not
+gitignored) `web/go.mod` — module `<module>/web`, `go <version>`, no Go code,
+just a boundary marker with a comment explaining why it's there. Without it,
+`go build/vet/test/list ./...` run from the repo root descends into
+`web/app/node_modules`, which ships stray `.go` files from vendored
+dependencies; the separate module stops the Go toolchain's `./...` expansion
+at the `web/` boundary. `gofmt` doesn't respect module boundaries, so its
+gates still target `cmd internal` explicitly regardless of `web/go.mod` — see
+the `new-react-app` skill's `references/config-notes.md`, § Go serving
+gotchas, for the same note from the frontend-scaffold side.
 
 ## Repository secret
 

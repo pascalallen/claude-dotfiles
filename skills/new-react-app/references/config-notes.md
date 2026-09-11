@@ -170,6 +170,14 @@ baking values into the bundle at build time.
   for non-`GET` methods; a real static asset is served; a missing static asset
   → JSend 404, not the shell; Swagger (if mounted) wins over the shell for its
   path.
+- Add a **tracked** `web/go.mod` (module `<module>/web`, `go <version>`, no Go
+  code — just a boundary marker with a comment explaining why it's there).
+  Without it, `go build/vet/test/list ./...` run from the repo root descends
+  into `web/app/node_modules`, which ships stray `.go` files from vendored
+  dependencies; the separate module stops `./...` expansion at the `web/`
+  boundary. `gofmt` doesn't respect module boundaries at all, so its gates
+  still need to target `cmd internal` explicitly (never `gofmt -l .`)
+  regardless of `web/go.mod`.
 
 ## JSend fail-data shape
 

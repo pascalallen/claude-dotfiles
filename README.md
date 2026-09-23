@@ -77,6 +77,7 @@ authoritative code shapes in `references/` files loaded on demand.
 | `event-sourcing` | The domain explicitly needs audit/replay/temporal queries | Additively swaps PostgreSQL persistence for EventStoreDB; owns all ES-only conventions |
 | `new-php-service` | Creating a new PHP backend | DockerSymfony base + imposed `src/{Domain,Application,Infrastructure}` structure, invokable handlers, ULIDs, XML Doctrine mappings |
 | `new-react-app` | Adding a frontend | Production carline stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
+| `jira-ticket` | Working a Jira ticket in any repo | Reads the ticket, derives the repo's own branch/commit/PR conventions from its agent docs and merged PRs, implements on a branch, opens a **draft** PR — never merges |
 
 ## Canonical Reference Repos
 

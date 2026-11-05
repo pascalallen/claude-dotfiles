@@ -20,7 +20,7 @@ Dependency direction is strict: infrastructure imports application and domain; d
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
-- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; async only via the `pascalallen/pubsub` library when true background work exists — consequence: single-instance deploys
+- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; async only via the `pascalallen/pubsub` library when true background work exists — consequence: single-instance deploys; a service with exactly one use case and no commands/events may inject its query handler directly (keep the CQRS shape, drop the bus) — record it in an ADR, supersede it when a second use case lands (portfolio-agent ADR-0005)
 - Auth: JWT · Event store (ES only): EventStoreDB
 - Docker + Compose; dev commands run inside Docker via `bin/exec`; `bin/up`, `bin/down`, `bin/exec` always present; **no Makefiles**
 
@@ -60,6 +60,18 @@ Reach for ES only when state history has explicit business value (audit trail, r
 - Library-quality bar (as in `pubsub`/`hmac`): gofmt-clean, `go vet`, `go test -race -cover`, govulncheck in CI; semver + `/v2`-style module paths for libraries.
 - Workflow: GitHub Issue → `feature/<issue#>-<slug>` branch → PR. I review and merge every PR myself — agents never merge.
 
+## Per-Repo Claude Code Setup
+
+Every repo I own carries (reference: `pascalallen/portfolio-agent`; `nn6-go` for agents at scale):
+
+- `CLAUDE.md` under ~120 lines, written as pointers (domain docs, rules, "done means", workflow, agent roster); environment facts stay in the environment
+- Committed `.claude/settings.json`: command allowlist, `deny` for `.env` reads and edits of generated files (`wire_gen.go`, swagger `docs/`), gofmt PostToolUse hook; `settings.local.json`, `CLAUDE.local.md`, `.claude/worktrees/` gitignored
+- Path-scoped `.claude/rules/*.md` (`paths:` frontmatter) for layer conventions; a `verify` skill mirroring CI exactly
+- Subagents tiered by model: implementer (sonnet, `isolation: worktree`, test-first, opens the PR), refute-by-default reviewer (opus, read-only), plus a domain evaluator where behaviour isn't unit-testable (e.g. LLM agents behind a `//go:build eval` test)
+- Domain docs: `CONTEXT.md` (glossary with `_Avoid_` terms; lending repos align with `nn6-go`'s), `CONTEXT-MAP.md`, `docs/adr/NNNN-slug.md`, and `docs/agents/` for the mattpocock engineering skills
+- Committed `.mcp.json` for shared doc servers; CI = build, vet, gofmt, `test -race -cover`, Wire/swag drift, govulncheck
+- Delivery: epic issue with sub-issues → stacked PRs where one depends on another; follow-ups filed as `needs-triage` issues
+
 ## Skills
 
 Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feature` (extend), `event-sourcing` (additive ES layer), `new-php-service`, `new-react-app`. Each skill's `references/` files are authoritative for code shapes.
@@ -69,5 +81,7 @@ Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feat
 - `pascalallen/carline` — production SaaS (private; local at `~/code/carline`). **Ground truth** for Go + React conventions; where it diverges from templates, carline wins.
 - `pascalallen/go-clean-arch` — the clean Go template the `new-go-service` skill clones
 - `pascalallen/es-go` — DDD + CQRS + hexagonal + event sourcing in Go
+- `pascalallen/nn6-go` — factoring/ABL lending platform port (local at `~/code/nn6-go`); its `CONTEXT.md` is the canonical lending glossary
+- `pascalallen/portfolio-agent` — ADK Go agent on a local LLM; reference for the per-repo Claude Code setup
 - `pascalallen/pubsub` — channel-based pub/sub library (the async escape hatch)
 - `pascalallen/Astral` — DDD + CQRS + hexagonal pattern in PHP; `pascalallen/DockerSymfony` — the Symfony/Docker base the `new-php-service` skill clones

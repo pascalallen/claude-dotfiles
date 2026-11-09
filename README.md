@@ -31,8 +31,8 @@ cd ~/code/claude-dotfiles
 
 `install.sh` prunes stale/dangling links from previous checkouts, backs up any
 pre-existing real `~/.claude/CLAUDE.md` / `~/.claude/settings.json`, then
-symlinks `CLAUDE.md`, `settings.json`, each `hooks/*.sh` script, and each
-`skills/<name>/` directory into `~/.claude/`. Re-running is idempotent. Restart
+symlinks `CLAUDE.md`, `settings.json`, each `hooks/*.sh` script, each
+`agents/*.md` definition and each `skills/<name>/` directory into `~/.claude/`. Re-running is idempotent. Restart
 Claude Code after installing.
 
 ```bash
@@ -63,6 +63,24 @@ status` here — config drift is tracked, not silent.
   script no-ops (exit 0) for non-Go files or when `gofmt`/`jq`/`python3` are
   missing, so it can never block an edit.
 
+- **No secrets, no machine-local config** — this repo is public. Tokens come
+  from the shell profile (e.g. `export GITHUB_PERSONAL_ACCESS_TOKEN="$(gh auth
+  token)"`), machine-local MCP servers go in `~/.claude/settings.local.json`,
+  and project-only plugins (and `autoMode` notes) go in that project's
+  `.claude/settings.local.json`.
+
+## Agents
+
+Project-agnostic subagent templates, linked into `~/.claude/agents/`:
+
+| Agent | Use when |
+|-------|----------|
+| `code-writer` | One checklist item from a brief file on disk; test-first, own worktree, opens the PR, never merges |
+| `code-reviewer` | One PR touching SQL, money, migrations, auth/tenancy or concurrency; read-only, refute-by-default, defects with failure scenarios only |
+
+Copy them into a project's `.claude/agents/` and specialise the invariants and
+gates once the project has its own rules.
+
 ## How skills work
 
 Skills are **model-invoked, not slash commands**: Claude Code reads each
@@ -92,6 +110,7 @@ authoritative code shapes in `references/` files loaded on demand.
 CLAUDE.md            global config → ~/.claude/CLAUDE.md
 settings.json        user settings: permissions + hooks → ~/.claude/settings.json
 hooks/               hook scripts → ~/.claude/hooks/<name>.sh
+agents/<name>.md     subagent templates → ~/.claude/agents/<name>.md
 skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
 docs/adr/            architecture decision records
 install.sh           idempotent symlink install (prunes stale links)

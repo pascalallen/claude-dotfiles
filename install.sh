@@ -5,13 +5,14 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 HOOKS_DIR="$CLAUDE_DIR/hooks"
+AGENTS_DIR="$CLAUDE_DIR/agents"
 
-mkdir -p "$SKILLS_DIR" "$HOOKS_DIR"
+mkdir -p "$SKILLS_DIR" "$HOOKS_DIR" "$AGENTS_DIR"
 
 # 1. Prune stale links: anything dangling, or pointing into any claude-dotfiles
 #    checkout (old ~/projects path, legacy flat *.md skill links, this repo —
 #    relinked fresh below). Never touches real files or unrelated symlinks.
-for link in "$SKILLS_DIR"/* "$HOOKS_DIR"/* "$CLAUDE_DIR/CLAUDE.md" "$CLAUDE_DIR/settings.json"; do
+for link in "$SKILLS_DIR"/* "$HOOKS_DIR"/* "$AGENTS_DIR"/* "$CLAUDE_DIR/CLAUDE.md" "$CLAUDE_DIR/settings.json"; do
     [ -L "$link" ] || continue
     target="$(readlink "$link")"
     if [ ! -e "$link" ] || [[ "$target" == */claude-dotfiles/* ]]; then
@@ -59,6 +60,15 @@ for skill_dir in "$DOTFILES_DIR/skills/"*/; do
     name="$(basename "$skill_dir")"
     ln -sfn "${skill_dir%/}" "$SKILLS_DIR/$name"
     echo "linked skill $name -> $SKILLS_DIR/$name"
+done
+
+# 6. Agents — link each agent definition individually so project-agnostic
+#    templates sit beside any real agent files the user keeps there.
+for agent in "$DOTFILES_DIR/agents/"*.md; do
+    [ -f "$agent" ] || continue
+    name="$(basename "$agent")"
+    ln -sfn "$agent" "$AGENTS_DIR/$name"
+    echo "linked agent $name -> $AGENTS_DIR/$name"
 done
 
 echo ""

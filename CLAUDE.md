@@ -16,11 +16,11 @@ Dependency direction is strict: infrastructure imports application and domain; d
 
 ## Default Go Stack
 
-- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go tool wire` in `infrastructure/container/`)
+- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go generate` via the `//go:generate go run -mod=mod github.com/google/wire/cmd/wire` directive in `infrastructure/container/`, as carline; no `tool` directive in `go.mod`)
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
-- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; async only via the `pascalallen/pubsub` library when true background work exists — consequence: single-instance deploys
+- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; durable async work via `pascalallen/pgqueue` (Postgres-backed job queue, e.g. carline's `DurableCommandBus`) when true background work exists — consequence: single-instance deploys
 - Auth: JWT · Event store (ES only): EventStoreDB
 - Docker + Compose; dev commands run inside Docker via `bin/exec`; `bin/up`, `bin/down`, `bin/exec` always present; **no Makefiles**
 
@@ -69,5 +69,6 @@ Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feat
 - `pascalallen/carline` — production SaaS (private; local at `~/code/carline`). **Ground truth** for Go + React conventions; where it diverges from templates, carline wins.
 - `pascalallen/go-clean-arch` — the clean Go template the `new-go-service` skill clones
 - `pascalallen/es-go` — DDD + CQRS + hexagonal + event sourcing in Go
-- `pascalallen/pubsub` — channel-based pub/sub library (the async escape hatch)
+- `pascalallen/pgqueue` — Postgres-backed durable job queue + NOTIFY/LISTEN pub/sub (the async default, as carline)
+- `pascalallen/pubsub` — in-memory channel-based pub/sub library (no durability)
 - `pascalallen/Astral` — DDD + CQRS + hexagonal pattern in PHP; `pascalallen/DockerSymfony` — the Symfony/Docker base the `new-php-service` skill clones

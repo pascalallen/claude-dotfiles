@@ -16,11 +16,11 @@ Dependency direction is strict: infrastructure imports application and domain; d
 
 ## Default Go Stack
 
-- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go generate` via the `//go:generate go run -mod=mod github.com/google/wire/cmd/wire` directive in `infrastructure/container/`, as carline; no `tool` directive in `go.mod`)
+- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go generate` via the `//go:generate go run -mod=mod github.com/google/wire/cmd/wire` directive in `infrastructure/container/`; no `tool` directive in `go.mod`)
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
-- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; durable async work via `pascalallen/pgqueue` (Postgres-backed job queue, e.g. carline's `DurableCommandBus`) when true background work exists — consequence: single-instance deploys
+- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; durable async work via `pascalallen/pgqueue` (Postgres-backed job queue behind a `DurableCommandBus`) when true background work exists — consequence: single-instance deploys
 - Auth: JWT · Event store (ES only): EventStoreDB
 - Docker + Compose; dev commands run inside Docker via `bin/exec`; `bin/up`, `bin/down`, `bin/exec` always present; **no Makefiles**
 
@@ -62,7 +62,7 @@ Reach for ES only when state history has explicit business value (audit trail, r
 - No code comments; rationale goes in the PR body.
 - Commits: one or two plain commits per PR, no `Co-Authored-By` trailer. PR body: what is in and out, deviations, what was checked, `Part of #N`, last line `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. One checklist item per PR.
 - Decide technical calls by principles (DDD, hexagonal, CQRS, SOLID, RFCs); ask me only about scope or data, in plain words: situation, options, your pick.
-- Private repos (carline and the like) are references for you only; never name them in a project's code, docs, issues or PRs.
+- Private repos (see the private references below) are references for you only; never name them in a project's code, docs, issues or PRs.
 
 ## Agent Workflow
 
@@ -85,9 +85,11 @@ Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feat
 
 ## Canonical Reference Repos
 
-- `pascalallen/carline` — production SaaS (private; local at `~/code/carline`). **Ground truth** for Go + React conventions; where it diverges from templates, carline wins.
+Private references (untracked, local only): @~/.claude/private-references.md
+
+- The production reference app (private; name and path in `~/.claude/private-references.md`, imported above; referred to as `$PROD_REF`) — **ground truth** for Go + React conventions; where it diverges from templates, it wins.
 - `pascalallen/go-clean-arch` — the clean Go template the `new-go-service` skill clones
 - `pascalallen/es-go` — DDD + CQRS + hexagonal + event sourcing in Go
-- `pascalallen/pgqueue` — Postgres-backed durable job queue + NOTIFY/LISTEN pub/sub (the async default, as carline)
+- `pascalallen/pgqueue` — Postgres-backed durable job queue + NOTIFY/LISTEN pub/sub (the async default, as in production)
 - `pascalallen/pubsub` — in-memory channel-based pub/sub library (no durability)
 - `pascalallen/Astral` — DDD + CQRS + hexagonal pattern in PHP; `pascalallen/DockerSymfony` — the Symfony/Docker base the `new-php-service` skill clones

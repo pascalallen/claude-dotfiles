@@ -17,7 +17,7 @@ live in [CLAUDE.md](CLAUDE.md); the durable design rationale lives in
 Two rules keep this repo honest:
 
 - **Skills clone living templates** (`go-clean-arch`, `DockerSymfony`,
-  `carline/web/app`) instead of embedding file copies that rot ([ADR 0001](docs/adr/0001-skills-clone-living-templates.md)).
+  the production reference app's `web/app`) instead of embedding file copies that rot ([ADR 0001](docs/adr/0001-skills-clone-living-templates.md)).
 - **Nothing lives here that Claude can already do without it** — no generic
   knowledge, no deployment runbooks, no historical planning documents.
 
@@ -94,11 +94,11 @@ authoritative code shapes in `references/` files loaded on demand.
 | `add-cqrs-feature` | Extending an existing Go service | Adds a command/query/event+listener and optional HTTP route following the grouped-by-domain conventions, with exact insertion points |
 | `event-sourcing` | The domain explicitly needs audit/replay/temporal queries | Additively swaps PostgreSQL persistence for EventStoreDB; owns all ES-only conventions |
 | `new-php-service` | Creating a new PHP backend | DockerSymfony base + imposed `src/{Domain,Application,Infrastructure}` structure, invokable handlers, ULIDs, XML Doctrine mappings |
-| `new-react-app` | Adding a frontend | Production carline stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
+| `new-react-app` | Adding a frontend | Production stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
 
 ## Canonical Reference Repos
 
-- [carline](https://github.com/pascalallen/carline) — production SaaS (private); **ground truth** where templates lag
+- The production reference app — private; named only in the untracked `~/.claude/private-references.md`; **ground truth** where templates lag
 - [go-clean-arch](https://github.com/pascalallen/go-clean-arch) — Go template the scaffold skill clones
 - [es-go](https://github.com/pascalallen/es-go) — event sourcing reference
 - [pubsub](https://github.com/pascalallen/pubsub) — channel-based pub/sub library (the async escape hatch)

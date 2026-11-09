@@ -1,12 +1,12 @@
 ---
 name: add-cqrs-feature
-description: Add a CQRS feature — a command+handler, query+handler, and/or domain event+listener, optionally exposed over an HTTP route — to an existing Go service built on Pascal Allen's DDD/hexagonal/CQRS conventions (go-clean-arch / carline shape). Use when extending a service the new-go-service skill produced, not for scaffolding a new one.
+description: Add a CQRS feature — a command+handler, query+handler, and/or domain event+listener, optionally exposed over an HTTP route — to an existing Go service built on Pascal Allen's DDD/hexagonal/CQRS conventions (go-clean-arch / production shape). Use when extending a service the new-go-service skill produced, not for scaffolding a new one.
 ---
 
 # Add CQRS Feature
 
 Extend an existing Go service (the shape produced by the `new-go-service` skill /
-`go-clean-arch` / `carline`) with a new command, query, event, and/or route,
+`go-clean-arch` / the production reference app) with a new command, query, event, and/or route,
 following the established conventions exactly.
 
 Code templates for every step are in **`references/templates.md`** — read it

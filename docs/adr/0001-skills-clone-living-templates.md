@@ -7,7 +7,7 @@
 The original scaffold skills embedded full copies of every file they generated
 (composer.json, Dockerfiles, nginx configs, webpack configs, entire Go files).
 Those copies rotted: within months the skills prescribed a messaging pattern,
-frontend stack, and directory layout that production (`carline`) had already
+frontend stack, and directory layout that production had already
 moved past. A skill that is a snapshot of a repo is a second copy of that repo
 with no CI.
 
@@ -16,7 +16,7 @@ with no CI.
 Scaffold skills do not embed full file bodies. Each skill is:
 
 1. a **clone/copy recipe** against a living, buildable template repo
-   (`go-clean-arch`, `DockerSymfony`, `carline/web/app`), plus
+   (`go-clean-arch`, `DockerSymfony`, the production app's `web/app`), plus
 2. the **conventions** the template encodes, in a `references/` file, marked
    authoritative over the template when the two diverge, plus
 3. a **verification gate** (build + tests green) before the scaffold counts as done.
@@ -28,6 +28,6 @@ Small illustrative snippets are fine; complete config/file dumps are not.
 - Skills stay short (SKILL.md ≤ ~150 lines) and age well; drift shows up as a
   one-line conventions fix, not a 500-line template rewrite.
 - The template repos must stay buildable — they are effectively part of the
-  toolchain. When production diverges from a template (e.g. carline's
+  toolchain. When production diverges from a template (e.g. production's
   synchronous buses vs go-clean-arch's channel buses), the conventions file
   records the delta until the template is migrated.

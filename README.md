@@ -17,7 +17,7 @@ live in [CLAUDE.md](CLAUDE.md); the durable design rationale lives in
 Two rules keep this repo honest:
 
 - **Skills clone living templates** (`go-clean-arch`, `DockerSymfony`,
-  `carline/web/app`) instead of embedding file copies that rot ([ADR 0001](docs/adr/0001-skills-clone-living-templates.md)).
+  the production reference app's `web/app`) instead of embedding file copies that rot ([ADR 0001](docs/adr/0001-skills-clone-living-templates.md)).
 - **Nothing lives here that Claude can already do without it** — no generic
   knowledge, no deployment runbooks, no historical planning documents.
 
@@ -31,8 +31,8 @@ cd ~/code/claude-dotfiles
 
 `install.sh` prunes stale/dangling links from previous checkouts, backs up any
 pre-existing real `~/.claude/CLAUDE.md` / `~/.claude/settings.json`, then
-symlinks `CLAUDE.md`, `settings.json`, each `hooks/*.sh` script, and each
-`skills/<name>/` directory into `~/.claude/`. Re-running is idempotent. Restart
+symlinks `CLAUDE.md`, `settings.json`, each `hooks/*.sh` script, each
+`agents/*.md` definition and each `skills/<name>/` directory into `~/.claude/`. Re-running is idempotent. Restart
 Claude Code after installing.
 
 ```bash
@@ -63,6 +63,24 @@ status` here — config drift is tracked, not silent.
   script no-ops (exit 0) for non-Go files or when `gofmt`/`jq`/`python3` are
   missing, so it can never block an edit.
 
+- **No secrets, no machine-local config** — this repo is public. Tokens come
+  from the shell profile (e.g. `export GITHUB_PERSONAL_ACCESS_TOKEN="$(gh auth
+  token)"`), machine-local MCP servers go in `~/.claude/settings.local.json`,
+  and project-only plugins (and `autoMode` notes) go in that project's
+  `.claude/settings.local.json`.
+
+## Agents
+
+Project-agnostic subagent templates, linked into `~/.claude/agents/`:
+
+| Agent | Use when |
+|-------|----------|
+| `code-writer` | One checklist item from a brief file on disk; test-first, own worktree, opens the PR, never merges |
+| `code-reviewer` | One PR touching SQL, money, migrations, auth/tenancy or concurrency; read-only, refute-by-default, defects with failure scenarios only |
+
+Copy them into a project's `.claude/agents/` and specialise the invariants and
+gates once the project has its own rules.
+
 ## How skills work
 
 Skills are **model-invoked, not slash commands**: Claude Code reads each
@@ -76,11 +94,11 @@ authoritative code shapes in `references/` files loaded on demand.
 | `add-cqrs-feature` | Extending an existing Go service | Adds a command/query/event+listener and optional HTTP route following the grouped-by-domain conventions, with exact insertion points |
 | `event-sourcing` | The domain explicitly needs audit/replay/temporal queries | Additively swaps PostgreSQL persistence for EventStoreDB; owns all ES-only conventions |
 | `new-php-service` | Creating a new PHP backend | DockerSymfony base + imposed `src/{Domain,Application,Infrastructure}` structure, invokable handlers, ULIDs, XML Doctrine mappings |
-| `new-react-app` | Adding a frontend | Production carline stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
+| `new-react-app` | Adding a frontend | Production stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
 
 ## Canonical Reference Repos
 
-- [carline](https://github.com/pascalallen/carline) — production SaaS (private); **ground truth** where templates lag
+- The production reference app — private; named only in the untracked `~/.claude/private-references.md`; **ground truth** where templates lag
 - [go-clean-arch](https://github.com/pascalallen/go-clean-arch) — Go template the scaffold skill clones
 - [es-go](https://github.com/pascalallen/es-go) — event sourcing reference
 - [pubsub](https://github.com/pascalallen/pubsub) — channel-based pub/sub library (the async escape hatch)
@@ -92,6 +110,7 @@ authoritative code shapes in `references/` files loaded on demand.
 CLAUDE.md            global config → ~/.claude/CLAUDE.md
 settings.json        user settings: permissions + hooks → ~/.claude/settings.json
 hooks/               hook scripts → ~/.claude/hooks/<name>.sh
+agents/<name>.md     subagent templates → ~/.claude/agents/<name>.md
 skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
 docs/adr/            architecture decision records
 install.sh           idempotent symlink install (prunes stale links)

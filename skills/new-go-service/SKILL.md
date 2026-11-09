@@ -19,10 +19,9 @@ drifts out of sync with the real conventions. Instead: clone the template, renam
 it to the new service, align it to current conventions, regenerate Wire, and
 verify it builds.
 
-> `carline` (`~/code/carline`) is the production app built on these conventions
-> and is **authoritative where the two diverge** — consult it for richer examples
-> (Stripe, WebSocket hub, multi-tenant scoping, refresh-token rotation) and for
-> the current messaging pattern, but treat `go-clean-arch` as the base to clone.
+> The production reference app (`$PROD_REF`, from `~/.claude/private-references.md`)
+> is built on these conventions and is **authoritative where the two diverge** —
+> consult it for richer examples and for the current messaging pattern, but treat `go-clean-arch` as the base to clone.
 
 **Before writing any code, read `references/conventions.md`** — it is the
 authoritative statement of the conventions, with condensed code shapes.
@@ -112,14 +111,14 @@ chmod +x bin/up bin/down bin/exec
 
 ## Align messaging to current conventions
 
-The current pattern (carline, production) is **synchronous, in-process, map-based
+The current pattern (production) is **synchronous, in-process, map-based
 buses** with `context.Context` threaded through every handler. If the cloned
 template still ships the older channel-based buses (`ChannelCommandBus`,
 `StartConsuming`, no `ctx` on handlers), port it before adding features:
 
 1. Replace `infrastructure/messaging/` with the synchronous implementations in
    `references/conventions.md` (§ Messaging) — copy them from
-   `~/code/carline/internal/carline/infrastructure/messaging/` when available.
+   `$PROD_REF/internal/<app>/infrastructure/messaging/` when available.
 2. Update handler/listener signatures to take `ctx context.Context` first.
 3. In `main.go`: drop `StartConsuming()` goroutines and bus `Shutdown()` calls;
    registration functions stay as-is.

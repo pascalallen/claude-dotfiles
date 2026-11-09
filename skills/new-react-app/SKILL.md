@@ -1,12 +1,12 @@
 ---
 name: new-react-app
-description: Scaffold a React 19 + TypeScript frontend on the production carline stack — Webpack 5, Yarn, TanStack Query, React Router v7, Bootstrap 5 + react-bootstrap + @pascalallen/react-form-components, SCSS, ESLint 9 flat config + Prettier. Use when adding a web frontend to a Go service (default, served by the Go binary) or standing up a standalone React app.
+description: Scaffold a React 19 + TypeScript frontend on the production stack — Webpack 5, Yarn, TanStack Query, React Router v7, Bootstrap 5 + react-bootstrap + @pascalallen/react-form-components, SCSS, ESLint 9 flat config + Prettier. Use when adding a web frontend to a Go service (default, served by the Go binary) or standing up a standalone React app.
 ---
 
 # New React App
 
 Scaffold a React + TypeScript frontend on Pascal Allen's production stack. The
-ground truth is **carline's `web/app/`** (`~/code/carline/web/app`) — copy and
+ground truth is **the production reference app's `web/app/`** (`$PROD_REF/web/app`, path in `~/.claude/private-references.md`) — copy and
 adapt its config rather than generating configs from memory or reaching for
 Vite/CRA.
 
@@ -15,7 +15,7 @@ stack, path aliases, directory conventions, and the deltas to adjust per app.
 
 ## Two modes
 
-1. **Frontend inside a Go service** (default — the carline/pascalallen.com
+1. **Frontend inside a Go service** (default — the production/pascalallen.com
    pattern): the app lives at `web/app/`, Webpack emits into `web/static/`, and
    the Go binary serves `web/template/` with runtime config injected into the
    page as base64-encoded JSON. One deployable artifact, no NGINX sidecar, and
@@ -36,12 +36,12 @@ Ask the user:
 ```bash
 mkdir -p web/app && cd web/app   # mode 1 (repo root for mode 2)
 
-# Copy carline's frontend toolchain — these files ARE the convention:
-cp ~/code/carline/web/app/package.json .          # then edit name/description/repository
-cp ~/code/carline/web/app/webpack.config.js .
-cp ~/code/carline/web/app/tsconfig.json .
-cp ~/code/carline/web/app/eslint.config.js .
-cp ~/code/carline/web/app/postcss.config.js .
+# Copy the production frontend toolchain — these files ARE the convention:
+cp "$PROD_REF"/web/app/package.json .          # then edit name/description/repository
+cp "$PROD_REF"/web/app/webpack.config.js .
+cp "$PROD_REF"/web/app/tsconfig.json .
+cp "$PROD_REF"/web/app/eslint.config.js .
+cp "$PROD_REF"/web/app/postcss.config.js .
 
 # Trim dependencies the new app doesn't need yet (Stripe-ish extras, moment,
 # lodash) but KEEP the core: react/react-dom 19, typescript, webpack 5 chain,

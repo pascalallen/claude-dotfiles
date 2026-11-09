@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "opus",
   "permissions": {
     "allow": [
       "Bash(bin/exec go:*)",
@@ -26,6 +27,54 @@
           }
         ]
       }
+    ]
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "mattpocock-skills@claude-plugins-official": true,
+    "mcp-server-dev@anthropic-plugin-directory": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "outsystems": {
+      "source": {
+        "source": "github",
+        "repo": "OutSystems/outsystems-mcp"
+      }
+    }
+  },
+  "tui": "fullscreen",
+  "skipWorkflowUsageWarning": true,
+  "agentPushNotifEnabled": true,
+  "autoMode": {
+    "allow": [
+      "$defaults"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None — personal and client work by Pascal Allen (Crimson Drive Design LLC)",
+      "**Source control**: github.com/pascalallen/* repos and their origin remotes are trusted; git and gh operations against them are routine",
+      "**Repository visibility**: check per repo with `gh repo view --json visibility`; a push to a PUBLIC repo is publishing — only that repo's own work, never secrets, credentials, customer data, phone numbers, or names of private repos",
+      "**Secrets management**: none central; local .env and ./secrets/ files (gitignored); GitHub tokens come from the gh keychain via the shell profile, never written to files",
+      "**Default / protected branches**: main; agents never merge — Pascal reviews and merges every PR",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything tagged `prod` or `production`",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development — Go (DDD + hexagonal + CQRS), PHP/Symfony, React; Docker-based dev via bin/up, bin/down, bin/exec"
     ]
   }
 }

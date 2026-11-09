@@ -1,6 +1,6 @@
 # ADR 0002 — Synchronous in-process buses; channels live in the pubsub library
 
-**Status:** Accepted (2026-08-13, reflecting carline production)
+**Status:** Accepted (2026-08-13, reflecting production)
 
 ## Context
 

@@ -16,11 +16,11 @@ Dependency direction is strict: infrastructure imports application and domain; d
 
 ## Default Go Stack
 
-- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go tool wire` in `infrastructure/container/`)
+- DI: Google Wire (`wire.go` injector + generated `wire_gen.go` — never hand-edit; regenerate with `go generate` via the `//go:generate go run -mod=mod github.com/google/wire/cmd/wire` directive in `infrastructure/container/`; no `tool` directive in `go.mod`)
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
-- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; async only via the `pascalallen/pubsub` library when true background work exists — consequence: single-instance deploys
+- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; durable async work via `pascalallen/pgqueue` (Postgres-backed job queue behind a `DurableCommandBus`) when true background work exists — consequence: single-instance deploys
 - Auth: JWT · Event store (ES only): EventStoreDB
 - Docker + Compose; dev commands run inside Docker via `bin/exec`; `bin/up`, `bin/down`, `bin/exec` always present; **no Makefiles**
 
@@ -59,6 +59,25 @@ Reach for ES only when state history has explicit business value (audit trail, r
 - Tests: testify; plain descriptive test names with `t.Run` subtests that read as sentences. Build and tests must be green before reporting work done.
 - Library-quality bar (as in `pubsub`/`hmac`): gofmt-clean, `go vet`, `go test -race -cover`, govulncheck in CI; semver + `/v2`-style module paths for libraries.
 - Workflow: GitHub Issue → `feature/<issue#>-<slug>` branch → PR. I review and merge every PR myself — agents never merge.
+- No code comments; rationale goes in the PR body.
+- Commits: one or two plain commits per PR, no `Co-Authored-By` trailer. PR body: what is in and out, deviations, what was checked, `Part of #N`, last line `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. One checklist item per PR.
+- Decide technical calls by principles (DDD, hexagonal, CQRS, SOLID, RFCs); ask me only about scope or data, in plain words: situation, options, your pick.
+- Private repos (see the private references below) are references for you only; never name them in a project's code, docs, issues or PRs.
+
+## Agent Workflow
+
+- One item per agent, from a brief file on disk that names the item, the evidence and the round values. Writers run in their own worktree (`isolation: worktree`) and open the PR; they never merge.
+- Reviewers are read-only and refute-by-default: report only defects with a concrete failure scenario. Give them the PR, a diff file and the worktree, not my conclusion.
+- Rolling waves: ≤4 writers, ≤2 reviewers; refill a slot when its PR merges. The orchestrator stays thin and reads summaries, not file dumps.
+- Context is the cost: `/compact` or `/clear` past ~150k tokens; deterministic work is a script, large outputs go to files and are read in slices. On a usage limit or 429, stop and report.
+- Templates: `code-writer` and `code-reviewer` in `~/.claude/agents/`; copy into a project's `.claude/agents/` and specialise once its rules exist.
+
+## Project Hygiene
+
+- Project `CLAUDE.md` holds stable rules only; area-specific rules go in a nested `CLAUDE.md` in that directory. Status lives in the GitHub epic plus `docs/build-log.md`, never in `CLAUDE.md`.
+- Prefer a test, hook or CI check over a prose rule (layout → architecture test, routes → conformance test); delete the prose once the check exists.
+- Decisions go in `docs/adr/`; the domain glossary in `CONTEXT.md`.
+- Memory: one current handoff entry; delete superseded entries; fold durable lessons into `CLAUDE.md` or an agent definition.
 
 ## Skills
 
@@ -66,8 +85,11 @@ Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feat
 
 ## Canonical Reference Repos
 
-- `pascalallen/carline` — production SaaS (private; local at `~/code/carline`). **Ground truth** for Go + React conventions; where it diverges from templates, carline wins.
+Private references (untracked, local only): @~/.claude/private-references.md
+
+- The production reference app (private; name and path in `~/.claude/private-references.md`, imported above; referred to as `$PROD_REF`) — **ground truth** for Go + React conventions; where it diverges from templates, it wins.
 - `pascalallen/go-clean-arch` — the clean Go template the `new-go-service` skill clones
 - `pascalallen/es-go` — DDD + CQRS + hexagonal + event sourcing in Go
-- `pascalallen/pubsub` — channel-based pub/sub library (the async escape hatch)
+- `pascalallen/pgqueue` — Postgres-backed durable job queue + NOTIFY/LISTEN pub/sub (the async default, as in production)
+- `pascalallen/pubsub` — in-memory channel-based pub/sub library (no durability)
 - `pascalallen/Astral` — DDD + CQRS + hexagonal pattern in PHP; `pascalallen/DockerSymfony` — the Symfony/Docker base the `new-php-service` skill clones

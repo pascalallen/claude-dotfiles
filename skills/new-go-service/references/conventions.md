@@ -1,8 +1,8 @@
 # Go Service Conventions (authoritative)
 
 These are the rules the code follows. When you add anything, match them exactly —
-`carline` (production) is the ground truth; `go-clean-arch` is the clean template.
-Where the two diverge, carline wins.
+the production reference app (`$PROD_REF`) is the ground truth; `go-clean-arch` is the clean template.
+Where the two diverge, production wins.
 
 ## Domain (`internal/<app>/domain/`) — pure Go, zero framework/infra imports
 
@@ -129,7 +129,7 @@ Do not report work done until `go build ./...` and `go test ./...` are green.
 
 ## Condensed reference snippets
 
-Illustrative shapes — the cloned repo and `carline` are the full, current source.
+Illustrative shapes — the cloned repo and `$PROD_REF` are the full, current source.
 
 **Domain entity + repository interface** (`domain/<entity>/`):
 ```go

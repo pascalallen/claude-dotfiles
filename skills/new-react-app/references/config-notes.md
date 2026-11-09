@@ -1,6 +1,6 @@
-# React App Config Notes (carline stack)
+# React App Config Notes (production stack)
 
-Ground truth: `~/code/carline/web/app`. Copy its configs; this file records what
+Ground truth: `$PROD_REF/web/app` (path in `~/.claude/private-references.md`). Copy its configs; this file records what
 they encode and what to change per app.
 
 ## Stack (keep these exact choices)
@@ -81,7 +81,7 @@ baking values into the bundle at build time.
 ## Deltas to adjust per app
 
 - `package.json`: `name`, `description`, `repository`; prune unused deps
-  (moment/lodash/bootstrap-icons are carline legacy — omit unless needed).
+  (moment/lodash/bootstrap-icons are production legacy — omit unless needed).
 - `webpack.config.js` output path: `../static/assets` in mode 1; `dist/` if
   standalone (then add `HtmlWebpackPlugin` + a static server or Docker/NGINX
   stage — only standalone apps need NGINX).

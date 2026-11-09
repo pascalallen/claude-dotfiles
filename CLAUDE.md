@@ -20,7 +20,7 @@ Dependency direction is strict: infrastructure imports application and domain; d
 - HTTP: Gin, JSend responders, closure actions
 - Database: PostgreSQL via `database/sql` + `lib/pq`, raw SQL — **no ORM**
 - Migrations: golang-migrate `.up.sql`/`.down.sql` pairs in `internal/<app>/infrastructure/database/migrations/`, run at startup with seeders
-- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; durable async work via `pascalallen/pgqueue` (Postgres-backed job queue behind a `DurableCommandBus`) when true background work exists — consequence: single-instance deploys
+- Messaging: **synchronous in-process buses** (`SynchronousCommandBus`/`QueryBus`/`EventDispatcher` behind `messaging` interfaces), `ctx` threaded through every handler; durable async work via `pascalallen/pgqueue` (Postgres-backed job queue behind a `DurableCommandBus`) when true background work exists — consequence: single-instance deploys; a service with exactly one use case and no commands/events may inject its query handler directly (keep the CQRS shape, drop the bus) — record it in an ADR, supersede it when a second use case lands
 - Auth: JWT · Event store (ES only): EventStoreDB
 - Docker + Compose; dev commands run inside Docker via `bin/exec`; `bin/up`, `bin/down`, `bin/exec` always present; **no Makefiles**
 
@@ -72,11 +72,17 @@ Reach for ES only when state history has explicit business value (audit trail, r
 - Context is the cost: `/compact` or `/clear` past ~150k tokens; deterministic work is a script, large outputs go to files and are read in slices. On a usage limit or 429, stop and report.
 - Templates: `code-writer` and `code-reviewer` in `~/.claude/agents/`; copy into a project's `.claude/agents/` and specialise once its rules exist.
 
-## Project Hygiene
+## Per-Repo Claude Code Setup
 
-- Project `CLAUDE.md` holds stable rules only; area-specific rules go in a nested `CLAUDE.md` in that directory. Status lives in the GitHub epic plus `docs/build-log.md`, never in `CLAUDE.md`.
-- Prefer a test, hook or CI check over a prose rule (layout → architecture test, routes → conformance test); delete the prose once the check exists.
-- Decisions go in `docs/adr/`; the domain glossary in `CONTEXT.md`.
+Every repo I own carries (reference repos for this setup are in the private references):
+
+- `CLAUDE.md` under ~120 lines of stable rules, written as pointers (domain docs, rules, "done means", workflow, agent roster); environment facts stay in the environment. Status lives in the GitHub epic plus `docs/build-log.md`, never in `CLAUDE.md`.
+- Area rules load only where they apply: a nested `CLAUDE.md` in that directory or a path-scoped `.claude/rules/*.md` (`paths:` frontmatter); a `verify` skill mirroring CI exactly.
+- Committed `.claude/settings.json`: command allowlist, `deny` for `.env` reads and edits of generated files (`wire_gen.go`, swagger `docs/`), gofmt PostToolUse hook; `settings.local.json`, `CLAUDE.local.md`, `.claude/worktrees/` gitignored. Project-only plugins and MCP servers are enabled here, not globally; shared doc servers in a committed `.mcp.json`.
+- Subagents: implementer and refute-by-default reviewer from the templates above (model set per project; templates inherit), plus a domain evaluator where behaviour isn't unit-testable (e.g. LLM agents behind a `//go:build eval` test).
+- Prefer a test, hook or CI check over a prose rule (layout → architecture test, routes → conformance test); delete the prose once the check exists. CI = build, vet, gofmt, `test -race -cover`, Wire/swag drift, govulncheck.
+- Domain docs: `CONTEXT.md` (glossary with `_Avoid_` terms), `CONTEXT-MAP.md`, `docs/adr/NNNN-slug.md`, and `docs/agents/` for the mattpocock engineering skills.
+- Delivery: epic issue with sub-issues → stacked PRs where one depends on another; follow-ups filed as `needs-triage` issues.
 - Memory: one current handoff entry; delete superseded entries; fold durable lessons into `CLAUDE.md` or an agent definition.
 
 ## Skills

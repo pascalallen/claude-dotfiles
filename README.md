@@ -104,6 +104,7 @@ authoritative code shapes in `references/` files loaded on demand.
 | `add-cqrs-feature` | Extending an existing Go service | Adds a command/query/event+listener and optional HTTP route following the grouped-by-domain conventions, with exact insertion points |
 | `event-sourcing` | The domain explicitly needs audit/replay/temporal queries | Additively swaps PostgreSQL persistence for EventStoreDB; owns all ES-only conventions |
 | `new-php-service` | Creating a new PHP backend | DockerSymfony base + imposed `src/{Domain,Application,Infrastructure}` structure, invokable handlers, ULIDs, XML Doctrine mappings |
+| `agent-waves` | Building several checklist items in parallel with agents | The orchestrator's procedure: round folder, briefs, wave launch, review loop, a serial land queue (`scripts/landq.sh`, `scripts/land.sh`) with a post-merge gate, ledger and handoff |
 | `new-react-app` | Adding a frontend | Production stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
 
 ## Canonical Reference Repos
@@ -121,7 +122,7 @@ CLAUDE.md            global config → ~/.claude/CLAUDE.md
 settings.json        user settings: permissions + hooks → ~/.claude/settings.json
 hooks/               hook scripts → ~/.claude/hooks/<name>.sh
 agents/<name>.md     subagent templates → ~/.claude/agents/<name>.md
-skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
+skills/<name>/       SKILL.md + references/ (+ scripts/) → ~/.claude/skills/<name>
 docs/adr/            architecture decision records
 install.sh           idempotent symlink install (prunes stale links)
 check.sh             pre-commit guard: no private names or plugin config in tracked files

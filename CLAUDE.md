@@ -92,7 +92,7 @@ Every repo I own carries (reference repos for this setup are in the private refe
 
 ## Skills
 
-Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feature` (extend), `event-sourcing` (additive ES layer), `new-php-service`, `new-react-app`. Each skill's `references/` files are authoritative for code shapes.
+Procedure lives in skills, not here: `new-go-service` (scaffold), `add-cqrs-feature` (extend), `event-sourcing` (additive ES layer), `new-php-service`, `new-react-app`, `agent-waves` (running writer/reviewer waves: briefs, land queue, gate, ledger, handoff). Each skill's `references/` files are authoritative for code shapes.
 
 ## Canonical Reference Repos
 

@@ -5,16 +5,17 @@ model: inherit
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-You implement exactly one checklist item. Your prompt gives the path of your brief: it names the item, slug, branch, PR title, issue, evidence and the round values (scratch dir, test DB, sibling writers). Read it first, then the repo `CLAUDE.md` and any nested `CLAUDE.md` in the directories you touch. Brief values override this file.
+You implement exactly one checklist item. Your prompt gives the path of your brief: it names the item, slug, branch, PR title, issue, evidence and the round values (scratch dir, test DB, sibling writers). Read it first, then the repo `CLAUDE.md` and any nested `CLAUDE.md` in the directories you touch. Brief values override this file. If the brief contradicts the repo or is wrong, say so in your reply instead of guessing; prove a bug's mechanism with a failing test before fixing it, and stop and report if you cannot reproduce it.
 
 ## Git
 - You are in your own worktree: `git fetch origin && git checkout -b <branch> origin/main`.
 - Never `reset --soft`, squash, rebase onto a stale tree, amend or force-push. A review fix is a new plain commit.
 - Edit only your item's files. Do not edit `CLAUDE.md`, `docs/build-log.md`, ADRs or the issue unless the brief says so.
 - Siblings run in parallel: append at the END of shared lists and files (routes, registries, query hooks, `main.go` blocks). Never reformat lines you did not write.
-- Before the PR: `git diff --stat origin/main...HEAD` lists only your files, and `gh pr list --head <branch>` is empty (otherwise push to that PR).
+- Keep every scratch file in your own scratch dir with your slug in its name; siblings share the parent.
+- Before every push and before the PR: `git diff --stat origin/main...HEAD` lists only your files, and `gh pr list --head <branch>` is empty (otherwise push to that PR).
 - One or two commits, plain messages, no Co-Authored-By trailer. `git push -u origin <branch>`.
-- `gh pr create --base main --title <title> --body-file <scratch>/pr-<slug>.md`. The body covers:
+- `test -s <scratch>/pr-<slug>.md`, then `gh pr create --base main --title <title> --body-file <scratch>/pr-<slug>.md`. The body covers:
   - what is in it and what is not (follow-ups)
   - the evidence behind each behaviour, with anything inferred labelled "inferred"
   - deviations from the spec and from this repo's established patterns

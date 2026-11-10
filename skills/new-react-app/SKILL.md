@@ -68,3 +68,7 @@ Mode 1: confirm the Go template serves the built bundle and the runtime config
 injection works (`window` config decoded from base64 JSON — see
 `references/config-notes.md`). CI runs `yarn ci` (`--frozen-lockfile`) + lint +
 build alongside the Go checks.
+
+## Claude Code setup
+
+Once the scaffold builds and its tests pass, run the **`claude-repo-setup`** skill so the repo gets its settings, rules, `verify` skill, agents and docs.

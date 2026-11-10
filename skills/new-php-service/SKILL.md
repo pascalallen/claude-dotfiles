@@ -80,3 +80,7 @@ bin/phpunit            # MUST pass
 Do not consider the scaffold done until the containers are healthy, migrations
 run, and PHPUnit is green. Add a project-level `CLAUDE.md` (template in
 `references/structure.md`).
+
+## Claude Code setup
+
+Once the scaffold builds and its tests pass, run the **`claude-repo-setup`** skill so the repo gets its settings, rules, `verify` skill, agents and docs.

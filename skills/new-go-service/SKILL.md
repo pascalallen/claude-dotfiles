@@ -153,6 +153,10 @@ both green. (Locally you have Go directly; in the Docker flow use
 > version"). `go tool wire` builds the generator with the module's own toolchain.
 > In Docker run it via `bin/exec` inside the Go container.
 
+## Claude Code setup
+
+Once the scaffold builds and its tests pass, run the **`claude-repo-setup`** skill so the repo gets its settings, rules, `verify` skill, agents and docs.
+
 ## Adding to the service
 
 Adding another command/query/event/route to an existing service is the

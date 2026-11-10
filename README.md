@@ -104,6 +104,7 @@ authoritative code shapes in `references/` files loaded on demand.
 | `add-cqrs-feature` | Extending an existing Go service | Adds a command/query/event+listener and optional HTTP route following the grouped-by-domain conventions, with exact insertion points |
 | `event-sourcing` | The domain explicitly needs audit/replay/temporal queries | Additively swaps PostgreSQL persistence for EventStoreDB; owns all ES-only conventions |
 | `new-php-service` | Creating a new PHP backend | DockerSymfony base + imposed `src/{Domain,Application,Infrastructure}` structure, invokable handlers, ULIDs, XML Doctrine mappings |
+| `claude-repo-setup` | A repo has no Claude Code setup, or it drifted | Copies settings, rules, the `verify` skill, CI and templates from the living reference repo and adapts them; writes `CLAUDE.md`, glossary, first ADR, `ROADMAP.md`, `REVIEW.md`, build log; turns prose rules into checks |
 | `agent-waves` | Building several checklist items in parallel with agents | The orchestrator's procedure: round folder, briefs, wave launch, review loop, a serial land queue (`scripts/landq.sh`, `scripts/land.sh`) with a post-merge gate, ledger and handoff |
 | `new-react-app` | Adding a frontend | Production stack: Webpack 5, React 19, TanStack Query, Bootstrap + `react-form-components`, SCSS, base64-JSON runtime config |
 
@@ -112,7 +113,8 @@ authoritative code shapes in `references/` files loaded on demand.
 - The production reference app — private; named only in the untracked `~/.claude/private-references.md`; **ground truth** where templates lag
 - [go-clean-arch](https://github.com/pascalallen/go-clean-arch) — Go template the scaffold skill clones
 - [es-go](https://github.com/pascalallen/es-go) — event sourcing reference
-- [pubsub](https://github.com/pascalallen/pubsub) — channel-based pub/sub library (the async escape hatch)
+- [pgqueue](https://github.com/pascalallen/pgqueue) — Postgres-backed durable job queue (the async default)
+- [pubsub](https://github.com/pascalallen/pubsub) — in-memory channel-based pub/sub library (no durability)
 - [Astral](https://github.com/pascalallen/Astral) / [DockerSymfony](https://github.com/pascalallen/DockerSymfony) — PHP pattern + base
 
 ## Repo layout

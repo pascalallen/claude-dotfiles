@@ -63,6 +63,16 @@ status` here — config drift is tracked, not silent.
   script no-ops (exit 0) for non-Go files or when `gofmt`/`jq`/`python3` are
   missing, so it can never block an edit.
 
+- **No commit trailer** — `attribution.commit` is empty, so commits carry no
+  `Co-Authored-By` line; the PR line stays at its default.
+- **Global `deny`** — `.env` / `.env.local` reads and `wire_gen.go` edits are
+  refused in every repo; a project adds its own generated files.
+- **`check.sh`** (run by the `.githooks/pre-commit` hook that `install.sh`
+  enables) — refuses a commit when a tracked file holds plugin config or a
+  name listed in the untracked `~/.claude/private-references.md`. Because
+  `settings.json` is a symlink, Claude Code can write machine-local values
+  into it; this is the guard.
+
 - **No secrets, no machine-local config** — this repo is public. Tokens come
   from the shell profile (e.g. `export GITHUB_PERSONAL_ACCESS_TOKEN="$(gh auth
   token)"`), machine-local MCP servers go in `~/.claude/settings.local.json`,
@@ -114,5 +124,6 @@ agents/<name>.md     subagent templates → ~/.claude/agents/<name>.md
 skills/<name>/       SKILL.md + references/ → ~/.claude/skills/<name>
 docs/adr/            architecture decision records
 install.sh           idempotent symlink install (prunes stale links)
+check.sh             pre-commit guard: no private names or plugin config in tracked files
 uninstall.sh         removes this repo's links
 ```

@@ -71,5 +71,8 @@ for agent in "$DOTFILES_DIR/agents/"*.md; do
     echo "linked agent $name -> $AGENTS_DIR/$name"
 done
 
+git -C "$DOTFILES_DIR" config core.hooksPath .githooks
+echo "set git hooks path -> .githooks (pre-commit runs check.sh)"
+
 echo ""
 echo "Claude dotfiles installed. Restart Claude Code to pick up changes."

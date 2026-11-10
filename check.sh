@@ -5,9 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 refs="${CLAUDE_PRIVATE_REFS:-$HOME/.claude/private-references.md}"
 fail=0
 
-for f in settings.json; do
-    jq empty "$f"
-done
+jq empty settings.json
 
 if git grep -n -I 'pluginConfigs' -- . ':!check.sh' ':!README.md'; then
     echo "check: plugin config belongs in a settings.local.json, not here" >&2
@@ -15,6 +13,7 @@ if git grep -n -I 'pluginConfigs' -- . ':!check.sh' ':!README.md'; then
 fi
 
 if [ -f "$refs" ]; then
+    # shellcheck disable=SC2016
     terms="$( { grep -oE '^- (\*\*Name:\*\* )?`pascalallen/[A-Za-z0-9_.-]+`' "$refs" | grep -oE 'pascalallen/[A-Za-z0-9_.-]+' | cut -d/ -f2 || true; grep -iE '^- \*\*Private terms:\*\*' "$refs" | grep -oE '`[^`]+`' | tr -d '`' || true; } | sort -u )"
     for t in $terms; do
         if git grep -n -I -i -w -F -e "$t" -- . ; then
@@ -31,7 +30,11 @@ for s in ./*.sh hooks/*.sh skills/*/scripts/*.sh .githooks/*; do
     bash -n "$s"
 done
 if command -v shellcheck >/dev/null 2>&1; then
-    shellcheck ./*.sh hooks/*.sh .githooks/*
+    scripts=(./*.sh hooks/*.sh .githooks/*)
+    for s in skills/*/scripts/*.sh; do
+        [ -f "$s" ] && scripts+=("$s")
+    done
+    shellcheck "${scripts[@]}"
 fi
 
 exit "$fail"

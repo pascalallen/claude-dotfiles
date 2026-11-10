@@ -113,7 +113,8 @@ authoritative code shapes in `references/` files loaded on demand.
 - The production reference app — private; named only in the untracked `~/.claude/private-references.md`; **ground truth** where templates lag
 - [go-clean-arch](https://github.com/pascalallen/go-clean-arch) — Go template the scaffold skill clones
 - [es-go](https://github.com/pascalallen/es-go) — event sourcing reference
-- [pubsub](https://github.com/pascalallen/pubsub) — channel-based pub/sub library (the async escape hatch)
+- [pgqueue](https://github.com/pascalallen/pgqueue) — Postgres-backed durable job queue (the async default)
+- [pubsub](https://github.com/pascalallen/pubsub) — in-memory channel-based pub/sub library (no durability)
 - [Astral](https://github.com/pascalallen/Astral) / [DockerSymfony](https://github.com/pascalallen/DockerSymfony) — PHP pattern + base
 
 ## Repo layout

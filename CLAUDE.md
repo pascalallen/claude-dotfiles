@@ -56,6 +56,9 @@ Reach for ES only when state history has explicit business value (audit trail, r
 
 - A green test suite is not proof of correctness — verify behavior against real data and paths before declaring something fixed. Hunt for silent failures (wrong behavior with no error) first.
 - Prove the mechanism of a bug before fixing it; no plausible-sounding patches.
+- Ticked checklists are not proof either: before calling an epic done, run a coverage check against its source list (spec, catalog, route table). Test an empty, non-seeded database, and load the app in a browser after a dependency change.
+- Local checks use CI's exact toolchain version and settings; a looser local run hides failures.
+- Check closed PRs and memory before proposing an approach again; confirm scope before building a large artifact.
 - Tests: testify; plain descriptive test names with `t.Run` subtests that read as sentences. Build and tests must be green before reporting work done.
 - Library-quality bar (as in `pubsub`/`hmac`): gofmt-clean, `go vet`, `go test -race -cover`, govulncheck in CI; semver + `/v2`-style module paths for libraries.
 - Workflow: GitHub Issue → `feature/<issue#>-<slug>` branch → PR. I review and merge every PR myself — agents never merge.
@@ -67,9 +70,10 @@ Reach for ES only when state history has explicit business value (audit trail, r
 ## Agent Workflow
 
 - One item per agent, from a brief file on disk that names the item, the evidence and the round values. Writers run in their own worktree (`isolation: worktree`) and open the PR; they never merge.
-- Reviewers are read-only and refute-by-default: report only defects with a concrete failure scenario. Give them the PR, a diff file and the worktree, not my conclusion.
-- Rolling waves: ≤4 writers, ≤2 reviewers; refill a slot when its PR merges. The orchestrator stays thin and reads summaries, not file dumps.
-- Context is the cost: `/compact` or `/clear` past ~150k tokens; deterministic work is a script, large outputs go to files and are read in slices. On a usage limit or 429, stop and report.
+- Set the model on every agent launch; an unset model is the session's. A fresh writer per stacked PR, sized under ~250k tokens; continue an agent only for a small fix, and keep its worktree until its PR merges.
+- Reviewers are read-only and refute-by-default: report only defects with a concrete failure scenario. Give them the PR, a diff file and the worktree, not my conclusion. Never cut reviewers to save tokens. A repeated defect means sweep the whole class; after two fix passes or a new class of defect, stop and report.
+- Rolling waves: ≤4 writers, ≤2 reviewers; refill a slot when its PR merges. The orchestrator stays thin and reads summaries, not file dumps; one orchestrator session owns merge order, migration numbers and shared files.
+- Context is the cost: `/compact` or `/clear` past ~150k tokens or ~12 merged PRs, with a handoff block written first; deterministic work is a script, large outputs go to files and are read in slices. On a usage limit or 429, stop and report.
 - Templates: `code-writer` and `code-reviewer` in `~/.claude/agents/`; copy into a project's `.claude/agents/` and specialise once its rules exist.
 
 ## Per-Repo Claude Code Setup
@@ -81,7 +85,8 @@ Every repo I own carries (reference repos for this setup are in the private refe
 - Committed `.claude/settings.json`: command allowlist, `deny` for `.env` reads and edits of generated files (`wire_gen.go`, swagger `docs/`), gofmt PostToolUse hook; `settings.local.json`, `CLAUDE.local.md`, `.claude/worktrees/` gitignored. Project-only plugins and MCP servers are enabled here, not globally; shared doc servers in a committed `.mcp.json`.
 - Subagents: implementer and refute-by-default reviewer from the templates above (model set per project; templates inherit), plus a domain evaluator where behaviour isn't unit-testable (e.g. LLM agents behind a `//go:build eval` test).
 - Prefer a test, hook or CI check over a prose rule (layout → architecture test, routes → conformance test); delete the prose once the check exists. CI = build, vet, gofmt, `test -race -cover`, Wire/swag drift, govulncheck.
-- Domain docs: `CONTEXT.md` (glossary with `_Avoid_` terms), `CONTEXT-MAP.md`, `docs/adr/NNNN-slug.md`, and `docs/agents/` for the mattpocock engineering skills.
+- Domain docs: `GLOSSARY.md` (with `_Avoid_` terms), `GLOSSARY-MAP.md`, `docs/adr/NNNN-slug.md`, and `docs/agents/` for the mattpocock engineering skills, which read those names (a repo that already has `CONTEXT.md` keeps it until it is next reworked).
+- `ROADMAP.md`: ordered milestones, each linking its epic issue; no status. `REVIEW.md`: the review invariants, read by the reviewer agent and by managed code review.
 - Delivery: epic issue with sub-issues → stacked PRs where one depends on another; follow-ups filed as `needs-triage` issues.
 - Memory: one current handoff entry; delete superseded entries; fold durable lessons into `CLAUDE.md` or an agent definition.
 

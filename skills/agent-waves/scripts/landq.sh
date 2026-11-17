@@ -50,7 +50,11 @@ wait)
     read_new() {
         end="$(out_size)"
         if [ "$end" -lt "$start" ]; then start=0; fi
-        new="$(tail -c +"$((start + 1))" "$out" | head -c "$((end - start))")"
+        if [ "$end" -eq "$start" ]; then
+            new=""
+        else
+            new="$(tail -c +"$((start + 1))" "$out" | head -c "$((end - start))")"
+        fi
     }
     finish() {
         [ -n "$new" ] && printf '%s\n' "$new"
@@ -58,15 +62,16 @@ wait)
         show_status
         exit "$1"
     }
+    waiting="$(pending)"
     read_new
     if [ -e "$round/STOP" ]; then
         finish 3
     fi
-    if [ -z "$(pending)" ]; then
+    if [ -z "$waiting" ]; then
         [ -n "$new" ] || echo "nothing queued, no new results"
         finish 0
     fi
-    first="$(pending | head -n 1)"
+    first="$(head -n 1 <<<"$waiting")"
     gate="$(
         set +u
         # shellcheck disable=SC1091
@@ -80,8 +85,10 @@ wait)
     fi
     waited=0
     while true; do
+        isdone=0
+        grep -qxF -e "$first" "$finished" && isdone=1
         read_new
-        if grep -qE "$terminal" <<<"$new" || grep -qxF -e "$first" "$finished"; then
+        if [ "$isdone" = 1 ] || grep -qE "$terminal" <<<"$new"; then
             finish 0
         fi
         if [ -e "$round/STOP" ]; then

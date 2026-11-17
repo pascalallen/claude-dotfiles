@@ -16,6 +16,8 @@ Each line is a rule and what happened without it, from one build of several hund
 - Several hub sessions at once collided on migration numbers and merge order.
 - Small "wait until merged" agents return early; a background loop does not.
 - A waiter built on `pgrep -f <name>` matched its own command line and never started the queue. Wait on a PID.
+- A hub that queued a PR and ended its turn with nothing armed sat idle 30-40 minutes, three times in one round, until the owner asked. The runner's output wakes nobody; `landq.sh wait` in the background does.
+- One-line `while ...; done` waiters typed into a zsh tool shell failed to parse twice. Waits live in scripts.
 - Editing a script while a background run was executing it corrupted the run.
 - After `/clear` or plan mode, agents were still running in worktrees the hub then touched.
 

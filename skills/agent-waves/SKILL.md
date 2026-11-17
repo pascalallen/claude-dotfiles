@@ -28,7 +28,7 @@ Never let sibling branches grow the same new file from an empty stub: land the f
 ## 3. Launch a wave
 
 - Fresh agents from the project's writer definition, `isolation: worktree`, the model set on the launch, the prompt naming only the brief and `shared.md`. Never a fork of the hub.
-- At most 4 writers. All launches in one message so they run together; waits run in the background and notify, never a foreground poll.
+- At most 4 writers. All launches in one message so they run together; waits run in the background and notify, never a foreground poll. End a turn only when everything in flight will wake you: an agent, or a background command. "I'll do X once Y" needs a waiter on Y.
 - A stacked PR gets a fresh writer. Continue a finished writer (SendMessage) only for a small fix, and keep its worktree until its PR is merged.
 - After `/clear`, `/compact` or plan mode, list the running agents before touching any worktree.
 
@@ -46,7 +46,10 @@ export ROUND_DIR="$PWD/.agents/rounds/<id>"
 nohup "${CLAUDE_SKILL_DIR}/scripts/landq.sh" run >/dev/null 2>&1 &   # one runner per round
 "${CLAUDE_SKILL_DIR}/scripts/landq.sh" add <pr> <worktree>
 "${CLAUDE_SKILL_DIR}/scripts/landq.sh" status
+"${CLAUDE_SKILL_DIR}/scripts/landq.sh" wait                       # always as a background command
 ```
+
+The runner writes to a file, which wakes nobody. After every `add`, and after every wake-up while anything is still queued, run `landq.sh wait` as a background Bash command (`run_in_background`). Never end a turn with a PR queued and no waiter running. It exits on the next result and prints it, including any result written since the last wait (it keeps its place in `landq.seen`), or when the item in flight at its start is done. On wake, act at once: launch the next wave, resolve the conflict, or re-add the PR, then arm it again if the queue is not empty. Exit 0 means a result or nothing queued, 2 means the runner is down (start it again), 3 means `STOP` (see 7), and 4 means it is still running after the timeout (wait again).
 
 The queue lands one PR at a time: merge the default branch into the PR branch, run `VERIFY_CMD`, push, wait for CI on that exact commit, merge with `--match-head-commit`, confirm the state is MERGED, delete the branch unless it is the base of an open PR, then run `GATE_CMD` before the next PR. A failed gate writes `STOP` and pauses the queue. Results are lines in `landq.out` (`MERGED`, `CONFLICT`, `VERIFY-FAILED`, `CI-FAILED`, `GATE-FAILED`); read that file, not the terminal.
 

@@ -8,7 +8,12 @@ queue="$round/queue.txt"
 finished="$round/done.txt"
 out="$round/landq.out"
 pidfile="$round/landq.pid"
+seenfile="$round/landq.seen"
 touch "$queue" "$finished"
+
+out_size() {
+    if [ -f "$out" ]; then wc -c <"$out" | tr -d ' '; else echo 0; fi
+}
 
 runner_up() {
     [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null
@@ -27,6 +32,7 @@ show_status() {
 
 case "${1:-}" in
 add)
+    [ -f "$seenfile" ] || out_size >"$seenfile"
     echo "$2 $3 $(date +%s)" >>"$queue"
     echo "queued #$2"
     exit 0
@@ -39,15 +45,28 @@ wait)
     max="${2:-5400}"
     poll="${LANDQ_WAIT_POLL:-15}"
     touch "$out"
-    if [ -e "$round/STOP" ]; then
+    end="$(out_size)"
+    if [ -f "$seenfile" ]; then start="$(cat "$seenfile")"; else start="$end"; fi
+    read_new() {
+        end="$(out_size)"
+        if [ "$end" -lt "$start" ]; then start=0; fi
+        new="$(tail -c +"$((start + 1))" "$out" | head -c "$((end - start))")"
+    }
+    finish() {
+        [ -n "$new" ] && printf '%s\n' "$new"
+        echo "$end" >"$seenfile"
         show_status
-        exit 3
+        exit "$1"
+    }
+    read_new
+    if [ -e "$round/STOP" ]; then
+        finish 3
     fi
     if [ -z "$(pending)" ]; then
-        echo "nothing queued; last results:"
-        tail -n 6 "$out"
-        exit 0
+        [ -n "$new" ] || echo "nothing queued, no new results"
+        finish 0
     fi
+    first="$(pending | head -n 1)"
     gate="$(
         set +u
         # shellcheck disable=SC1091
@@ -59,31 +78,24 @@ wait)
     else
         terminal='^(MERGED |FAILED #)'
     fi
-    start="$(wc -c <"$out" | tr -d ' ')"
     waited=0
     while true; do
-        new="$(tail -c +"$((start + 1))" "$out")"
-        if grep -qE "$terminal" <<<"$new"; then
-            printf '%s\n' "$new"
-            show_status
-            exit 0
+        read_new
+        if grep -qE "$terminal" <<<"$new" || grep -qxF -e "$first" "$finished"; then
+            finish 0
         fi
         if [ -e "$round/STOP" ]; then
-            printf '%s\n' "$new"
-            show_status
-            exit 3
+            finish 3
         fi
         if ! runner_up; then
-            printf '%s\n' "$new"
             echo "runner down: start it again with landq.sh run, then wait again"
-            exit 2
+            finish 2
         fi
         if [ "$waited" -ge "$max" ]; then
-            printf '%s\n' "$new"
             current="$(pending | head -n 1 | cut -d' ' -f1)"
-            echo "still running after ${max}s (#$current); wait again. Tail of its log:"
-            tail -n 5 "$round/land-$current.log" 2>/dev/null || true
-            exit 4
+            echo "still running after ${max}s (#${current:-none}); wait again. Tail of its log:"
+            [ -n "$current" ] && tail -n 5 "$round/land-$current.log" 2>/dev/null
+            finish 4
         fi
         sleep "$poll"
         waited=$((waited + poll))

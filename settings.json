@@ -1,5 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "attribution": {
+    "commit": ""
+  },
   "permissions": {
     "allow": [
       "Bash(bin/exec go:*)",
@@ -21,9 +24,6 @@
     ]
   },
   "model": "fable",
-  "attribution": {
-    "commit": ""
-  },
   "hooks": {
     "PostToolUse": [
       {

@@ -80,6 +80,13 @@ if [ "${REQUIRE_CI:-1}" = 1 ]; then
     echo "CI-GREEN $pr $sha"
 fi
 
+settled=0
+while [ "$settled" -lt 120 ]; do
+    seen="$(gh pr view "$pr" --json headRefOid,mergeable -q '.headRefOid + " " + .mergeable')"
+    [ "$seen" = "$sha MERGEABLE" ] && break
+    sleep 5
+    settled=$((settled + 5))
+done
 gh pr merge "$pr" "--${MERGE_METHOD:-merge}" --match-head-commit "$sha" >>"$log" 2>&1 || true
 state="$(gh pr view "$pr" --json state -q .state)"
 if [ "$state" != MERGED ]; then
